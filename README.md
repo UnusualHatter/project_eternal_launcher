@@ -11,9 +11,9 @@ A modern launcher for Team Fortress 2, designed to enhance your gaming experienc
 
 - **Modern UI**: Sleek, tabbed interface with a unique aesthetic.
 - **System Tray Integration**: Minimize to tray for background operation.
-- **Rich Presence**: Custom Discord RPC to show your status.
-- **Mod Management**: Easily manage your TF2 mods.
-- **Advanced Settings**: Configure `autoexec`, launch options, and hidden game settings.
+- **Rich Presence**: Custom Discord RPC to show your in-game status.
+- **Mod Management**: Easily manage your TF2 mods with an integrated build of Cukei's Casual Preloader.
+- **Advanced Settings**: Configure your `autoexec` and Launch Options using a dynamic UI.
 - **Optimization**: Tools to optimize game performance.
 
 ## 📸 Screenshots
