@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![.NET](https://img.shields.io/badge/.NET-8.0-purple)
 
-A modern, furry-style launcher for Team Fortress 2, designed to enhance your gaming experience with advanced configuration options, mod management, and rich presence integration.
+A modern launcher for Team Fortress 2, designed to enhance your gaming experience with advanced configuration options, mod management, and rich presence integration.
 
 ## ✨ Features
 
