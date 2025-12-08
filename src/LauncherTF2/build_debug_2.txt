@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(1,1): error CS1022: Type or namespace definition, or end-of-file expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_4bwq5zrz_wpftmp.csproj]
+
+Build FAILED.
+
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(1,1): error CS1022: Type or namespace definition, or end-of-file expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_4bwq5zrz_wpftmp.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.31

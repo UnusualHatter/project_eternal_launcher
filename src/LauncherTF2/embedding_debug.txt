@@ -1,0 +1,8 @@
+BuildWindowCore called. Child: 3805510, Parent: 592284
+Original Style: 96000000
+New Style: 56000000
+SetParent Result: 65548, Error: 0
+BuildWindowCore called. Child: 657820, Parent: 14878990
+Original Style: 96000000
+New Style: 56000000
+SetParent Result: 65548, Error: 0

@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\MainWindow.xaml(54,6): error MC3088: Property elements cannot be in the middle of an element's content.  They must be before or after the content. Line 54 Position 6. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2.csproj]
+
+Build FAILED.
+
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\MainWindow.xaml(54,6): error MC3088: Property elements cannot be in the middle of an element's content.  They must be before or after the content. Line 54 Position 6. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.00

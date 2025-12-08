@@ -1,0 +1,21 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\ModsView.xaml.cs(37,32): warning CS8602: Dereference of a possibly null reference. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(23,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(27,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(29,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(52,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(57,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+
+Build FAILED.
+
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\ModsView.xaml.cs(37,32): warning CS8602: Dereference of a possibly null reference. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(23,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(27,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(29,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(52,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Services\InventoryService.cs(57,17): error CS0103: The name 'Logger' does not exist in the current context [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_zg34wauc_wpftmp.csproj]
+    1 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:01.27

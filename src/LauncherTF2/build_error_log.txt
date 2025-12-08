@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\ViewModels\SettingsViewModel.cs(35,25): error CS1513: } expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_qxgjrfsy_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\ViewModels\SettingsViewModel.cs(35,25): error CS1002: ; expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_qxgjrfsy_wpftmp.csproj]
+
+Build FAILED.
+
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\ViewModels\SettingsViewModel.cs(35,25): error CS1513: } expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_qxgjrfsy_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\ViewModels\SettingsViewModel.cs(35,25): error CS1002: ; expected [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_qxgjrfsy_wpftmp.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.26

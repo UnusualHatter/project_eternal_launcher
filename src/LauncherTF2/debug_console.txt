@@ -1,0 +1,32 @@
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\ModsView.xaml.cs(37,32): warning CS8602: Dereference of a possibly null reference. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2_1tis05sl_wpftmp.csproj]
+C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\Views\ModsView.xaml.cs(37,32): warning CS8602: Dereference of a possibly null reference. [C:\Users\mathe\OneDrive\Documentos\ProjetoEternal\project_eternal_launcher\LauncherTF2\LauncherTF2.csproj]
+[InventoryViewModel] Loading inventory for SteamID: 76561198066866760
+[InventoryService] Initializing prices...
+[InventoryService] Fetching Steam inventory for 76561198066866760...
+[SteamService] Requesting: http://api.steampowered.com/IEconItems_440/GetPlayerItems/v1/?key=CD387EFEF2846EBAC906321F47154F43&steamid=76561198066866760&format=json
+[SteamService] Failed: ServiceUnavailable
+[InventoryService] Fetched 0 raw items from Steam.
+[InventoryService] Mapped 0 items.
+[InventoryViewModel] Loaded 0 items.
+[InventoryViewModel] Loading inventory for SteamID: 7656119806686676
+[InventoryService] Initializing prices...
+[InventoryService] Fetching Steam inventory for 7656119806686676...
+[SteamService] Requesting: http://api.steampowered.com/IEconItems_440/GetPlayerItems/v1/?key=CD387EFEF2846EBAC906321F47154F43&steamid=7656119806686676&format=json
+[InventoryService] Fetched 0 raw items from Steam.
+[InventoryService] Mapped 0 items.
+[InventoryViewModel] Loaded 0 items.
+[InventoryViewModel] Loading inventory for SteamID: 76561198066866760
+[InventoryService] Initializing prices...
+[InventoryService] Fetching Steam inventory for 76561198066866760...
+[SteamService] Requesting: http://api.steampowered.com/IEconItems_440/GetPlayerItems/v1/?key=CD387EFEF2846EBAC906321F47154F43&steamid=76561198066866760&format=json
+[SteamService] Failed: ServiceUnavailable
+[InventoryService] Fetched 0 raw items from Steam.
+[InventoryService] Mapped 0 items.
+[InventoryViewModel] Loaded 0 items.
+[InventoryViewModel] Loading inventory for SteamID: 76561199088026388
+[InventoryService] Initializing prices...
+[InventoryService] Fetching Steam inventory for 76561199088026388...
+[SteamService] Requesting: http://api.steampowered.com/IEconItems_440/GetPlayerItems/v1/?key=CD387EFEF2846EBAC906321F47154F43&steamid=76561199088026388&format=json
+[InventoryService] Fetched 219 raw items from Steam.
+[InventoryService] Mapped 219 items.
+[InventoryViewModel] Loaded 219 items.

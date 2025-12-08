@@ -1,0 +1,148 @@
+<Window x:Class="LauncherTF2.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:LauncherTF2.ViewModels"
+        xmlns:views="clr-namespace:LauncherTF2.Views"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        mc:Ignorable="d"
+        Title="Eternal TF2 Launcher" Height="1000" Width="1600"
+        MinWidth="1600" MinHeight="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundBrush}"
+        Icon="/Resources/Assets/logo64.png">
+
+
+    
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:HomeViewModel}">
+            <views:HomeView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:InventoryViewModel}">
+            <views:InventoryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BlogViewModel}">
+            <views:BlogView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ModsViewModel}">
+            <views:ModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RpcViewModel}">
+            <views:RpcView/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- System Tray Icon -->
+        <tb:TaskbarIcon x:Name="TrayIcon" ToolTipText="Eternal TF2 Launcher" DoubleClickCommand="{Binding HomeViewCommand}">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Start RPC" Command="{Binding RpcVM.StartRpcCommand}"/>
+                    <MenuItem Header="Stop RPC" Command="{Binding RpcVM.StopRpcCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="Open" Command="{Binding HomeViewCommand}"/>
+                    <MenuItem Header="Exit" Command="{Binding QuitCommand}"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
+        <!-- Sidebar -->
+        <Grid Grid.Column="0">
+            <!-- Home Background (Default Visible) -->
+            <Border x:Name="HomeBackground" Opacity="1">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#FF0f0f11" Offset="0.0"/>
+                        <GradientStop Color="#00000000" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHome}" Value="False">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.4"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            </Border>
+
+            <!-- Normal Background (Default Hidden) -->
+            <Border x:Name="NormalBackground" Background="{StaticResource SidebarBrush}" Opacity="0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHome}" Value="False">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.4"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            </Border>
+
+            <StackPanel>
+                <!-- Logo Area -->
+                <Image Source="/Resources/Assets/logo.png" Height="60" Margin="0,30,0,50" HorizontalAlignment="Center">
+                    <Image.Effect>
+                        <DropShadowEffect Color="{StaticResource AccentColor}" BlurRadius="10" ShadowDepth="0"/>
+                    </Image.Effect>
+                </Image>
+
+                <!-- Navigation -->
+                <RadioButton Content="Home" Style="{StaticResource SidebarButtonStyle}" Command="{Binding HomeViewCommand}" IsChecked="True"/>
+                <RadioButton Content="Inventory" Style="{StaticResource SidebarButtonStyle}" Command="{Binding InventoryViewCommand}"/>
+                <RadioButton Content="Mods" Style="{StaticResource SidebarButtonStyle}" Command="{Binding ModsViewCommand}"/>
+                <RadioButton Content="RPC" Style="{StaticResource SidebarButtonStyle}" Command="{Binding RpcViewCommand}"/>
+                <RadioButton Content="News" Style="{StaticResource SidebarButtonStyle}" Command="{Binding BlogViewCommand}"/>
+                <RadioButton Content="Settings" Style="{StaticResource SidebarButtonStyle}" Command="{Binding SettingsViewCommand}"/>
+                
+                <Separator Background="#333" Margin="20,20"/>
+                
+                <RadioButton Content="Quit" Style="{StaticResource SidebarButtonStyle}" Command="{Binding QuitCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Margin="0"/>
+    </Grid>
+</Window>
