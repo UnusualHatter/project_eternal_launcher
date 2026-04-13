@@ -8,9 +8,9 @@
         <core:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <core:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
 
-        <!-- Colors -->
-        <Color x:Key="BackgroundColor">#18181b</Color>
-        <Color x:Key="SidebarColor">#0f0f11</Color>
+        <!-- Colors (With Alpha/Transparency for Acrylic effect) -->
+        <Color x:Key="BackgroundColor">#E618181b</Color>
+        <Color x:Key="SidebarColor">#E60f0f11</Color>
         <Color x:Key="AccentColor">#ff6b00</Color> <!-- TF2 Orange -->
         <Color x:Key="TextColor">#ffffff</Color>
         <Color x:Key="SecondaryTextColor">#a1a1aa</Color>

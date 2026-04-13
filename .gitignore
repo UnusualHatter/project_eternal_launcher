@@ -58,3 +58,12 @@ ENV/
 
 # Logs
 *.log
+*_debug*.txt
+build_*.txt
+debug_*.txt
+embedding_debug.txt
+
+# Cache and config files
+*_cache.json
+settings.json
+launcher_config.json

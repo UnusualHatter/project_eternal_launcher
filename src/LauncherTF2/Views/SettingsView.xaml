@@ -689,6 +689,68 @@
                    </Grid>
                 </Expander>
 
+                <!-- LAUNCHER CONFIGURATION HEADER -->
+                <TextBlock Text="LAUNCHER CONFIGURATION" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,40,0,10"/>
+                <Separator Background="#333" Margin="0,0,0,20"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Column 1: Logging -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Logging" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="30"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Enable Debug Log" Style="{StaticResource LabelStyle}"/>
+                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding EnableDebugLog}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+
+                            <TextBlock Grid.Row="1" Text="Log Level" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Width="100" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding CurrentLogLevel}" HorizontalAlignment="Right"/>
+
+                            <TextBlock Grid.Row="2" Text="Auto-clear Logs on Startup" Style="{StaticResource LabelStyle}"/>
+                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoClearLogs}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Column 2: Behavior -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Behavior" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="30"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Minimize to Tray on Launch" Style="{StaticResource LabelStyle}"/>
+                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding MinimizeToTrayOnLaunch}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+
+                            <TextBlock Grid.Row="1" Text="Close to Tray Instead of Exit" Style="{StaticResource LabelStyle}"/>
+                            <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CloseToTray}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+
+                            <TextBlock Grid.Row="2" Text="Show Notifications" Style="{StaticResource LabelStyle}"/>
+                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding ShowNotifications}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
                 <!-- BINDS HEADER -->
                 <TextBlock Text="CUSTOM BINDS" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,40,0,10"/>
                 <Separator Background="#333" Margin="0,0,0,20"/>
@@ -823,6 +885,67 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
+
+                <!-- DISCORD RPC HEADER -->
+                <TextBlock Text="INTEGRATION: DISCORD" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,20,0,10"/>
+                <Separator Background="#333" Margin="0,0,0,20"/>
+                
+                <Border DataContext="{Binding Rpc}" Background="#222" CornerRadius="10" Padding="20" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="12" Height="12" Fill="{Binding StatusColor}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding StatusText}" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="Start RPC" Command="{Binding StartRpcCommand}" Style="{StaticResource ModernButtonStyle}" Background="#2e7d32" Margin="0,0,10,0"/>
+                                <Button Content="Stop RPC" Command="{Binding StopRpcCommand}" Style="{StaticResource ModernButtonStyle}" Background="#c62828"/>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <Separator Background="#333" Margin="0,0,0,15"/>
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Current Map" Foreground="#aaa" Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding CurrentMap}" Foreground="White" FontSize="18"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Queue Status" Foreground="#aaa" Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding QueueStatus}" Foreground="White" FontSize="18"/>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <Separator Background="#333" Margin="0,0,0,15"/>
+                        
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Auto-start RPC with Launcher" Foreground="#ddd" VerticalAlignment="Center"/>
+                            <CheckBox IsChecked="{Binding AutoStartRpc}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="Auto-start when TF2 is detected" Foreground="#ddd" VerticalAlignment="Center"/>
+                            <CheckBox IsChecked="{Binding AutoStartWhenGameDetected}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        
+                        <Grid>
+                            <TextBlock Text="Pause RPC when TF2 closes" Foreground="#ddd" VerticalAlignment="Center"/>
+                            <CheckBox IsChecked="{Binding PauseWhenGameCloses}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
                 <Button Content="Reset Configuration" Command="{Binding ResetCommand}" 
                         Style="{StaticResource ModernButtonStyle}" Background="#d32f2f" HorizontalAlignment="Right" Margin="0,40,0,20"/>

@@ -121,6 +121,12 @@ public class RpcViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(initialSettings.SteamPath))
         {
             _service.Tf2Path = initialSettings.SteamPath;
+            
+            // Auto start if enabled
+            if (_autoStartRpc)
+            {
+                _service.Start();
+            }
         }
     }
 

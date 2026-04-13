@@ -11,11 +11,95 @@ public class SettingsViewModel : ViewModelBase
     private readonly AutoexecParser _autoexecParser;
     private SettingsModel _currentSettings;
 
+    // Launcher configuration properties
+    private bool _enableDebugLog = false;
+    private string _currentLogLevel = "Info";
+    private bool _autoClearLogs = false;
+    private bool _minimizeToTrayOnLaunch = true;
+    private bool _closeToTray = true;
+    private bool _showNotifications = true;
+
     public SettingsModel CurrentSettings
     {
         get => _currentSettings;
         set => SetProperty(ref _currentSettings, value);
     }
+
+    public bool EnableDebugLog
+    {
+        get => _enableDebugLog;
+        set
+        {
+            if (SetProperty(ref _enableDebugLog, value))
+            {
+                Logger.MinimumLogLevel = value ? LogLevel.Debug : LogLevel.Info;
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public string CurrentLogLevel
+    {
+        get => _currentLogLevel;
+        set
+        {
+            if (SetProperty(ref _currentLogLevel, value) && Enum.TryParse<LogLevel>(value, out var logLevel))
+            {
+                Logger.MinimumLogLevel = logLevel;
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public bool AutoClearLogs
+    {
+        get => _autoClearLogs;
+        set
+        {
+            if (SetProperty(ref _autoClearLogs, value))
+            {
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public bool MinimizeToTrayOnLaunch
+    {
+        get => _minimizeToTrayOnLaunch;
+        set
+        {
+            if (SetProperty(ref _minimizeToTrayOnLaunch, value))
+            {
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public bool CloseToTray
+    {
+        get => _closeToTray;
+        set
+        {
+            if (SetProperty(ref _closeToTray, value))
+            {
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public bool ShowNotifications
+    {
+        get => _showNotifications;
+        set
+        {
+            if (SetProperty(ref _showNotifications, value))
+            {
+                SaveLauncherSettings();
+            }
+        }
+    }
+
+    public string[] LogLevels { get; } = { "Debug", "Info", "Warning", "Error" };
 
     public ICommand ResetCommand { get; }
     public ICommand AddBindCommand { get; }
@@ -23,6 +107,8 @@ public class SettingsViewModel : ViewModelBase
     public ICommand StartListeningCommand { get; }
 
     private BindModel? _listeningBind;
+
+    public RpcViewModel Rpc { get; } = new RpcViewModel();
 
     public string[] AvailableKeys { get; } =
     [
@@ -60,6 +146,9 @@ public class SettingsViewModel : ViewModelBase
         // Load values from autoexec (read-only sync, writing happens on save)
         _autoexecParser.LoadFromAutoexec(_currentSettings, _currentSettings.SteamPath);
 
+        // Load launcher settings
+        LoadLauncherSettings();
+
         // Events
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
@@ -69,6 +158,78 @@ public class SettingsViewModel : ViewModelBase
         AddBindCommand = new RelayCommand(o => AddBind());
         RemoveBindCommand = new RelayCommand(o => RemoveBind(o));
         StartListeningCommand = new RelayCommand(o => StartListening(o));
+    }
+
+    private const string LauncherSettingsFile = "launcher_config.json";
+
+    private void LoadLauncherSettings()
+    {
+        try
+        {
+            var configPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LauncherSettingsFile);
+            if (System.IO.File.Exists(configPath))
+            {
+                var json = System.IO.File.ReadAllText(configPath);
+                var config = System.Text.Json.JsonSerializer.Deserialize<LauncherConfig>(json);
+                if (config != null)
+                {
+                    _enableDebugLog = config.EnableDebugLog;
+                    _currentLogLevel = config.LogLevel ?? "Info";
+                    _autoClearLogs = config.AutoClearLogs;
+                    _minimizeToTrayOnLaunch = config.MinimizeToTrayOnLaunch;
+                    _closeToTray = config.CloseToTray;
+                    _showNotifications = config.ShowNotifications;
+                    
+                    // Apply log level
+                    if (Enum.TryParse<LogLevel>(_currentLogLevel, out var logLevel))
+                    {
+                        Logger.MinimumLogLevel = logLevel;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to load launcher settings", ex);
+        }
+    }
+
+    private void SaveLauncherSettings()
+    {
+        try
+        {
+            var config = new LauncherConfig
+            {
+                EnableDebugLog = _enableDebugLog,
+                LogLevel = _currentLogLevel,
+                AutoClearLogs = _autoClearLogs,
+                MinimizeToTrayOnLaunch = _minimizeToTrayOnLaunch,
+                CloseToTray = _closeToTray,
+                ShowNotifications = _showNotifications
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+            
+            var configPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LauncherSettingsFile);
+            System.IO.File.WriteAllText(configPath, json);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to save launcher settings", ex);
+        }
+    }
+
+    private class LauncherConfig
+    {
+        public bool EnableDebugLog { get; set; }
+        public string? LogLevel { get; set; }
+        public bool AutoClearLogs { get; set; }
+        public bool MinimizeToTrayOnLaunch { get; set; }
+        public bool CloseToTray { get; set; }
+        public bool ShowNotifications { get; set; }
     }
 
     private void StartListening(object? parameter)

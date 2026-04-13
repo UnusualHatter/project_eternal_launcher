@@ -1,12 +1,14 @@
 using LauncherTF2.Core;
 using System.Windows.Input;
 using System.Windows;
+using LauncherTF2.Services;
 
 namespace LauncherTF2.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
     private object _currentView;
+    private readonly GameService _gameService;
 
     public HomeViewModel HomeVM { get; }
     public InventoryViewModel InventoryVM { get; }
@@ -42,11 +44,13 @@ public class MainViewModel : ViewModelBase
     public ICommand BlogViewCommand { get; }
     public ICommand ModsViewCommand { get; }
     public ICommand SettingsViewCommand { get; }
-    public ICommand RpcViewCommand { get; }
     public ICommand QuitCommand { get; }
+    public ICommand GlobalPlayCommand { get; }
 
     public MainViewModel()
     {
+        _gameService = new GameService();
+        
         HomeVM = new HomeViewModel();
         InventoryVM = new InventoryViewModel();
         BlogVM = new BlogViewModel();
@@ -65,12 +69,13 @@ public class MainViewModel : ViewModelBase
             ModsVM.Initialize();
         });
         SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
-        RpcViewCommand = new RelayCommand(o => CurrentView = RpcVM);
         QuitCommand = new RelayCommand(o =>
         {
             Cleanup();
             Application.Current.Shutdown();
         });
+
+        GlobalPlayCommand = new RelayCommand(o => _gameService.LaunchTF2());
 
         // Clean up any zombie processes from previous sessions
         KillOrphanedPreloaders();
@@ -80,18 +85,43 @@ public class MainViewModel : ViewModelBase
     {
         try
         {
-            foreach (var process in System.Diagnostics.Process.GetProcessesByName("casual_preloader"))
+            var processes = System.Diagnostics.Process.GetProcessesByName("casual_preloader");
+            foreach (var process in processes)
             {
-                try { process.Kill(); } catch { }
+                try
+                {
+                    process.Kill();
+                    Logger.LogInfo($"Killed orphaned preloader process: {process.Id}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"Failed to kill preloader process {process.Id}", ex);
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogError("Error while killing orphaned preloaders", ex);
+        }
     }
 
     public void Cleanup()
     {
-        ModsVM.Cleanup();
-        // Ensure RPC service stops
-        Services.Tf2RichPresenceService.Instance.Stop();
+        try
+        {
+            ModsVM.Cleanup();
+            
+            // Ensure RPC service stops
+            Tf2RichPresenceService.Instance.Stop();
+            
+            // Stop injection monitoring
+            InjectionService.Instance.Dispose();
+            
+            Logger.LogInfo("MainViewModel cleanup completed");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Error during MainViewModel cleanup", ex);
+        }
     }
 }

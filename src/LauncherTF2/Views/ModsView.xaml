@@ -3,34 +3,219 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:LauncherTF2.ViewModels"
              xmlns:local="clr-namespace:LauncherTF2.Views"
              mc:Ignorable="d" 
              d:DesignHeight="720" d:DesignWidth="1030">
     <UserControl.Resources>
-        <d:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-    </UserControl.Resources>
-    <Grid Margin="30">
-        <StackPanel>
-            <Border Background="{StaticResource CardBrush}" Padding="30" CornerRadius="10">
-                <StackPanel>
-                    <TextBlock Text="Cukei's Casual Preloader" FontSize="24" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Set you tf folder path in the configs before using!" Foreground="#aaa" TextWrapping="Wrap" Margin="0,10,0,20"/>
+        <!-- Converter for switching layouts -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        
+        <!-- Toggle Switch Style (Simplified for this view) -->
+        <Style x:Key="ModActivationToggleStyle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Background" Width="40" Height="20" Background="#444" CornerRadius="10">
+                            <Ellipse x:Name="Dot" Width="14" Height="14" Fill="White" HorizontalAlignment="Left" Margin="3,0">
+                                <Ellipse.RenderTransform>
+                                    <TranslateTransform X="0"/>
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Background" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="20" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <TextBlock Text="Status: " Foreground="#aaa" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,20,0"/>
+        <!-- Grid Item Template -->
+        <DataTemplate x:Key="GridModTemplate">
+            <Border Margin="10" Background="{StaticResource CardBrush}" CornerRadius="12" Width="220" Height="280">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="140"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Thumbnail -->
+                    <Border Grid.Row="0" CornerRadius="12,12,0,0" Background="#111">
+                        <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill" Opacity="0.8"/>
+                    </Border>
+                    
+                    <!-- Content -->
+                    <Border Grid.Row="1" Padding="15">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" Foreground="White" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Author}" Foreground="#888" FontSize="12" Margin="0,2,0,5"/>
+                            <TextBlock Text="{Binding Description}" Foreground="#aaa" FontSize="11" TextWrapping="Wrap" MaxHeight="45" TextTrimming="CharacterEllipsis"/>
+                            
+                            <Grid Margin="0,15,0,0">
+                                <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold"/>
+                                <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ModActivationToggleStyle}" HorizontalAlignment="Right"
+                                          Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          CommandParameter="{Binding}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
 
-                        <Button Content="Reset" Command="{Binding ResetPreloaderCommand}" 
-                                Style="{StaticResource ModernButtonStyle}" Background="#d32f2f" Width="120" Height="35"/>
+        <!-- List Item Template -->
+        <DataTemplate x:Key="ListModTemplate">
+            <Border Margin="0,0,0,10" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="15">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="5" Background="#111">
+                         <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill"/>
+                    </Border>
+                    
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0">
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding Author}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
-                    <Border x:Name="HostContainer" Background="#1e1e1e" MinHeight="500">
-                        <TextBlock Text="Loading Casual Preloader..." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#888"/>
-                    </Border>
-                </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding Description}" Foreground="#aaa" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,20,0"/>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" Margin="0,0,20,0" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ModActivationToggleStyle}"
+                                  Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}"/>
+                    </StackPanel>
+                </Grid>
             </Border>
-        </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="30,10,30,30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="*"/>    <!-- Library -->
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Search and Title -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock Text="Mod Library" FontSize="32" FontWeight="Black" Foreground="White" VerticalAlignment="Center" Margin="0,0,40,0"/>
+                
+                <!-- Search Box -->
+                <Border Background="#222" CornerRadius="20" Width="300" Height="40" Padding="15,0">
+                    <Grid>
+                        <TextBlock Text="Search mods..." Foreground="#555" VerticalAlignment="Center" 
+                                   Visibility="{Binding SearchQuery, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
+                        <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
+                                 Background="Transparent" BorderThickness="0" Foreground="White" VerticalContentAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Filters and View Toggles -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Filters -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,30,0">
+                    <RadioButton Content="All" IsChecked="True" Command="{Binding ChangeFilterCommand}" CommandParameter="All" Style="{StaticResource SidebarButtonStyle}" Padding="15,5"/>
+                    <RadioButton Content="Enabled" Command="{Binding ChangeFilterCommand}" CommandParameter="Enabled" Style="{StaticResource SidebarButtonStyle}" Padding="15,5"/>
+                    <RadioButton Content="Disabled" Command="{Binding ChangeFilterCommand}" CommandParameter="Disabled" Style="{StaticResource SidebarButtonStyle}" Padding="15,5"/>
+                </StackPanel>
+
+                <!-- View Mode Toggle -->
+                <Button Command="{Binding ToggleViewModeCommand}" Background="Transparent" BorderThickness="0" Cursor="Hand" Width="40" Height="40" ToolTip="Toggle View">
+                    <Grid>
+                        <!-- Grid Icon -->
+                        <Path Fill="#aaa" Width="20" Height="20" Stretch="Uniform" Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
+                            <Path.Data>
+                                M3 3h7v7H3V3zm9 0h7v7h-7V3zM3 12h7v7H3v-7zm9 0h7v7h-7v-7z
+                            </Path.Data>
+                        </Path>
+                        <!-- List Icon -->
+                        <Path Fill="#aaa" Width="20" Height="20" Stretch="Uniform" Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                            <Path.Data>
+                                M3 4h18v2H3V4zm0 6h18v2H3v-2zm0 6h18v2H3v-2z
+                            </Path.Data>
+                        </Path>
+                    </Grid>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" 
+                                                CornerRadius="8"
+                                                Padding="8">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#333"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Mod Grid/List Container -->
+        <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewerStyle}" HorizontalScrollBarVisibility="Disabled">
+            <Grid>
+                <!-- Grid View -->
+                <ItemsControl ItemsSource="{Binding FilteredModsView}" 
+                             ItemTemplate="{StaticResource GridModTemplate}"
+                             Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+                <!-- List View -->
+                <ItemsControl ItemsSource="{Binding FilteredModsView}" 
+                             ItemTemplate="{StaticResource ListModTemplate}"
+                             Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </Grid>
+        </ScrollViewer>
     </Grid>
 </UserControl>
-

@@ -1,195 +1,112 @@
 using LauncherTF2.Core;
+using LauncherTF2.Models;
 using LauncherTF2.Services;
-using System.Diagnostics;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using System.Windows.Input;
-using System.IO;
 
 namespace LauncherTF2.ViewModels;
 
 public class ModsViewModel : ViewModelBase
 {
     private readonly ModManagerService _modService;
-    private bool _isInstalled;
-    private string _statusMessage;
+    private ObservableCollection<ModModel> _allMods;
+    private ICollectionView _filteredModsView;
+    private string _searchQuery = string.Empty;
+    private string _currentFilter = "All"; // All, Enabled, Disabled
+    private bool _isGridView = true;
 
-    public bool IsInstalled
+    public ObservableCollection<ModModel> AllMods
     {
-        get => _isInstalled;
-        set => SetProperty(ref _isInstalled, value);
+        get => _allMods;
+        set => SetProperty(ref _allMods, value);
     }
 
-    public string StatusMessage
+    public ICollectionView FilteredModsView
     {
-        get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value);
+        get => _filteredModsView;
+        set => SetProperty(ref _filteredModsView, value);
     }
 
-    public ICommand InstallCommand { get; }
-    public ICommand UpdateCommand { get; }
-    public ICommand RemoveCommand { get; }
-    public ICommand RunCommand { get; }
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                _filteredModsView.Refresh();
+            }
+        }
+    }
 
-    public ICommand ResetPreloaderCommand { get; }
+    public string CurrentFilter
+    {
+        get => _currentFilter;
+        set
+        {
+            if (SetProperty(ref _currentFilter, value))
+            {
+                _filteredModsView.Refresh();
+            }
+        }
+    }
+
+    public bool IsGridView
+    {
+        get => _isGridView;
+        set => SetProperty(ref _isGridView, value);
+    }
+
+    public ICommand ChangeFilterCommand { get; }
+    public ICommand ToggleViewModeCommand { get; }
+    public ICommand ToggleModActivationCommand { get; }
 
     public ModsViewModel()
     {
         _modService = new ModManagerService();
-        _statusMessage = "Ready";
-        CheckStatus();
+        _allMods = new ObservableCollection<ModModel>(_modService.GetInstalledMods());
+        
+        _filteredModsView = CollectionViewSource.GetDefaultView(_allMods);
+        _filteredModsView.Filter = FilterMods;
 
-        InstallCommand = new RelayCommand(async o => await Install());
-        UpdateCommand = new RelayCommand(async o => await Update());
-        RemoveCommand = new RelayCommand(async o => await Remove());
-        RunCommand = new RelayCommand(o => Run(), o => IsInstalled);
-        ResetPreloaderCommand = new RelayCommand(o => ResetPreloader());
-    }
-
-    private void ResetPreloader()
-    {
-        var result = System.Windows.MessageBox.Show(
-            "Are you sure you want to factory reset the Casual Preloader?\n\n" +
-            "This will delete all your settings and downloaded mods for the preloader.\n" +
-            "The preloader will restart as if it were the first time.",
-            "Factory Reset Confirmation",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-
-        if (result == System.Windows.MessageBoxResult.Yes)
-        {
-            try
-            {
-                Cleanup();
-
-                string preloaderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "CasualPreloader");
-                string settingsFile = Path.Combine(preloaderPath, "app_settings.json");
-                string modsDir = Path.Combine(preloaderPath, "mods");
-                string modsInfoFile = Path.Combine(preloaderPath, "modsinfo.json");
-
-                if (File.Exists(settingsFile)) File.Delete(settingsFile);
-                if (Directory.Exists(modsDir)) Directory.Delete(modsDir, true);
-                if (File.Exists(modsInfoFile)) File.Delete(modsInfoFile);
-
-                System.Windows.MessageBox.Show("Reset complete! The preloader will now restart.", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-
-                Initialize();
+        ChangeFilterCommand = new RelayCommand(o => CurrentFilter = o?.ToString() ?? "All");
+        ToggleViewModeCommand = new RelayCommand(o => IsGridView = !IsGridView);
+        ToggleModActivationCommand = new RelayCommand(o => {
+            if (o is ModModel mod) {
+                _modService.ToggleMod(mod);
             }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"Error during reset: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-            }
-        }
+        });
     }
 
-    private void CheckStatus()
+    private bool FilterMods(object obj)
     {
-        IsInstalled = _modService.IsModInstalled();
-        StatusMessage = IsInstalled ? "Installed" : "Not Installed";
-    }
+        if (obj is not ModModel mod) return false;
 
-    private async Task Install()
-    {
-        StatusMessage = "Verifying...";
-        await _modService.InstallModAsync();
-        StatusMessage = "Ready";
-        IsInstalled = true;
-    }
+        // Search Filter
+        bool matchesSearch = string.IsNullOrEmpty(SearchQuery) || 
+                            mod.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            mod.Author.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase);
 
-    private async Task Update()
-    {
-        try
+        // State Filter
+        bool matchesState = CurrentFilter switch
         {
-            StatusMessage = "Pulling changes...";
-            await _modService.UpdateModAsync();
-            StatusMessage = "Updated!";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-        }
-    }
+            "Enabled" => mod.IsEnabled,
+            "Disabled" => !mod.IsEnabled,
+            _ => true
+        };
 
-    private async Task Remove()
-    {
-        StatusMessage = "Cannot remove bundled mod.";
-        await Task.Delay(1000);
-        StatusMessage = "Ready";
+        return matchesSearch && matchesState;
     }
-
-    private Process? _preloaderProcess;
-    public Process? PreloaderProcess
-    {
-        get => _preloaderProcess;
-        set => SetProperty(ref _preloaderProcess, value);
-    }
-
-    private bool _isActive;
 
     public void Initialize()
     {
-        _isActive = true;
-        if (IsInstalled)
-        {
-            Run();
-        }
-    }
-
-    private IntPtr _preloaderHwnd;
-    public IntPtr PreloaderHwnd
-    {
-        get => _preloaderHwnd;
-        set => SetProperty(ref _preloaderHwnd, value);
-    }
-
-    private async void Run()
-    {
-        if (_preloaderProcess != null) return;
-
-        try
-        {
-            StatusMessage = "Launching...";
-            var result = await _modService.RunPreloader(embedded: true);
-
-            if (!_isActive)
-            {
-                try { result.Process.Kill(); result.Process.Dispose(); } catch { }
-                return;
-            }
-
-            PreloaderProcess = result.Process;
-            PreloaderHwnd = result.Hwnd;
-            StatusMessage = "Running";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error running: {ex.Message}";
-        }
+        // For now, nothing special. In the future, we could re-scan directories.
     }
 
     public void Cleanup()
     {
-        _isActive = false;
-        if (_preloaderProcess != null && !_preloaderProcess.HasExited)
-        {
-            try
-            {
-                _preloaderProcess.Kill();
-                _preloaderProcess.Dispose();
-            }
-            catch { }
-            finally
-            {
-                _preloaderProcess = null;
-                PreloaderHwnd = IntPtr.Zero;
-                StatusMessage = "Ready";
-            }
-        }
-    }
-
-    public void HandleEmbeddingError()
-    {
-        StatusMessage = "Error: Embedding failed. Retrying...";
-        Cleanup();
-        // Optional: Retry? Or just stop. Let's just stop to be safe and let user try again.
-        StatusMessage = "Error: Failed to embed window";
+        // Cleanup resources if any.
     }
 }
