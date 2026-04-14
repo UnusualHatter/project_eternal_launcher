@@ -61,7 +61,7 @@ public class Tf2RichPresenceService : IDisposable
             try
             {
                 _client = new DiscordRpcClient(ClientId);
-                _client.Logger = new ConsoleLogger(LogLevel.Warning) { Coloured = true };
+                _client.Logger = new ConsoleLogger(DiscordRPC.Logging.LogLevel.Info) { Coloured = true };
                 
                 if (!_client.Initialize())
                 {

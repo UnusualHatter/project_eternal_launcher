@@ -1,4 +1,5 @@
 using LauncherTF2.Core;
+using System.Collections.ObjectModel;
 
 namespace LauncherTF2.Models;
 
@@ -14,6 +15,11 @@ public class ModModel : ViewModelBase
     private DateTime _lastModified;
     private ModType _modType = ModType.Unknown;
     private string? _loadError;
+    private string _sourceLabel = "Instalado";
+    private ModSourceKind _sourceKind = ModSourceKind.Installed;
+    private string? _sourceUrl;
+    private ObservableCollection<string> _categories = new();
+    private bool _isDownloading;
 
     public string Name
     {
@@ -75,7 +81,51 @@ public class ModModel : ViewModelBase
         set => SetProperty(ref _loadError, value);
     }
 
+    public string SourceLabel
+    {
+        get => _sourceLabel;
+        set => SetProperty(ref _sourceLabel, value);
+    }
+
+    public ModSourceKind SourceKind
+    {
+        get => _sourceKind;
+        set
+        {
+            if (SetProperty(ref _sourceKind, value))
+            {
+                OnPropertyChanged(nameof(IsInstalled));
+            }
+        }
+    }
+
+    public string? SourceUrl
+    {
+        get => _sourceUrl;
+        set => SetProperty(ref _sourceUrl, value);
+    }
+
+    public ObservableCollection<string> Categories
+    {
+        get => _categories;
+        set => SetProperty(ref _categories, value);
+    }
+
+    public bool IsDownloading
+    {
+        get => _isDownloading;
+        set => SetProperty(ref _isDownloading, value);
+    }
+
+    public bool IsInstalled => SourceKind == ModSourceKind.Installed;
+
     public bool HasError => !string.IsNullOrEmpty(_loadError);
+}
+
+public enum ModSourceKind
+{
+    Installed,
+    Online
 }
 
 public enum ModType

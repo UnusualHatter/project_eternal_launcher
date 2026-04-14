@@ -25,7 +25,7 @@ public partial class HomeView : UserControl
 
     public HomeView()
     {
-        InitializeComponent();
+        // InitializeComponent();
 
         _timer = new DispatcherTimer
         {
@@ -57,20 +57,20 @@ public partial class HomeView : UserControl
         var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(1));
         var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(1));
 
-        if (_isImage1Active)
-        {
-            // Transition from Image1 (Active) to Image2
-            BackgroundImage2.Source = imageSource;
-            BackgroundImage2.BeginAnimation(OpacityProperty, fadeIn);
-            BackgroundImage1.BeginAnimation(OpacityProperty, fadeOut);
-        }
-        else
-        {
-            // Transition from Image2 (Active) to Image1
-            BackgroundImage1.Source = imageSource;
-            BackgroundImage1.BeginAnimation(OpacityProperty, fadeIn);
-            BackgroundImage2.BeginAnimation(OpacityProperty, fadeOut);
-        }
+        // if (_isImage1Active)
+        // {
+        //     // Transition from Image1 (Active) to Image2
+        //     BackgroundImage2.Source = imageSource;
+        //     BackgroundImage2.BeginAnimation(OpacityProperty, fadeIn);
+        //     BackgroundImage1.BeginAnimation(OpacityProperty, fadeOut);
+        // }
+        // else
+        // {
+        //     // Transition from Image2 (Active) to Image1
+        //     BackgroundImage1.Source = imageSource;
+        //     BackgroundImage1.BeginAnimation(OpacityProperty, fadeIn);
+        //     BackgroundImage2.BeginAnimation(OpacityProperty, fadeOut);
+        // }
 
         _isImage1Active = !_isImage1Active;
     }

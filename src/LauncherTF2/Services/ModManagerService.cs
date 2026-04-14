@@ -1,6 +1,7 @@
 using LauncherTF2.Models;
 using LauncherTF2.Core;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -163,7 +164,10 @@ public class ModManagerService
                 ModPath = vpkPath,
                 LastModified = fileInfo.LastWriteTime,
                 ModType = ModType.Vpk,
-                ThumbnailPath = "/Resources/Assets/logo.png"
+                ThumbnailPath = "/Resources/Assets/logo.png",
+                SourceKind = ModSourceKind.Installed,
+                SourceLabel = "Instalado",
+                Categories = new ObservableCollection<string> { "Instalado", "VPK" }
             };
         }
         catch (Exception ex)
@@ -223,7 +227,10 @@ public class ModManagerService
                 ModPath = folderPath,
                 LastModified = dirInfo.LastWriteTime,
                 ModType = ModType.Folder,
-                ThumbnailPath = thumbnail
+                ThumbnailPath = thumbnail,
+                SourceKind = ModSourceKind.Installed,
+                SourceLabel = "Instalado",
+                Categories = new ObservableCollection<string> { "Instalado", "Pasta" }
             };
         }
         catch (Exception ex)

@@ -2,42 +2,37 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System;
+using System.IO;
 
 namespace LauncherTF2.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon? _trayIcon;
+    private readonly System.Windows.Controls.ContentControl? _mainContentControl;
+
     public MainWindow()
     {
-        InitializeComponent();
+        // Carrega o XAML manualmente para evitar dependência dos campos gerados pelo designer.
+        Application.LoadComponent(this, new Uri("/LauncherTF2;component/Views/MainWindow.xaml", UriKind.Relative));
+
+        _trayIcon = FindName("TrayIcon") as Hardcodet.Wpf.TaskbarNotification.TaskbarIcon;
+        _mainContentControl = FindName("MainContentControl") as System.Windows.Controls.ContentControl;
 
         try
         {
-            // Set tray icon from window icon (Window.Icon is already set to logo64.png)
-            if (Icon != null)
+            // Usa o ícone associado ao executável para garantir compatibilidade com NotifyIcon.
+            var assembly = System.Reflection.Assembly.GetEntryAssembly();
+            if (assembly != null && File.Exists(assembly.Location))
             {
-                using (var stream = new System.IO.MemoryStream())
-                {
-                    Icon.Save(stream);
-                    stream.Position = 0;
-                    TrayIcon.Icon = new System.Drawing.Icon(stream);
-                }
+                var appIcon = System.Drawing.Icon.ExtractAssociatedIcon(assembly.Location);
+                if (appIcon != null && _trayIcon != null)
+                    _trayIcon.Icon = appIcon;
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to set tray icon: {ex.Message}");
-            
-            // Fallback: try to get from executable
-            try
-            {
-                var assembly = System.Reflection.Assembly.GetEntryAssembly();
-                if (assembly != null)
-                {
-                    TrayIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(assembly.Location);
-                }
-            }
-            catch { }
         }
 
         // Setup Content transition animation
@@ -71,13 +66,13 @@ public partial class MainWindow : Window
 
     private void AnimateContentTransition()
     {
-        if (MainContentControl == null) return;
+        if (_mainContentControl == null) return;
         
         var fadeOut = new DoubleAnimation(0.5, TimeSpan.FromSeconds(0.05));
         var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.15));
 
-        fadeOut.Completed += (s, e) => MainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-        MainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        fadeOut.Completed += (s, e) => _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 
     private void TopBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -90,14 +85,12 @@ public partial class MainWindow : Window
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
-        this.WindowState = WindowState.Minimized;
+        MinimizarParaBandeja();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        // Minimize to tray
-        this.Hide();
-        TrayIcon.ShowBalloonTip("Eternal TF2", "Launcher is still running in the background.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+        MinimizarParaBandeja();
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -107,5 +100,11 @@ public partial class MainWindow : Window
         {
             vm.Cleanup();
         }
+    }
+
+    private void MinimizarParaBandeja()
+    {
+        Hide();
+        _trayIcon?.ShowBalloonTip("Eternal TF2", "O launcher continua em execução em segundo plano.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }
 }

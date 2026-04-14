@@ -46,6 +46,7 @@ public class MainViewModel : ViewModelBase
     public ICommand SettingsViewCommand { get; }
     public ICommand QuitCommand { get; }
     public ICommand GlobalPlayCommand { get; }
+    public ICommand RestoreWindowCommand { get; }
 
     public MainViewModel()
     {
@@ -69,6 +70,7 @@ public class MainViewModel : ViewModelBase
             ModsVM.Initialize();
         });
         SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
+        RestoreWindowCommand = new RelayCommand(o => RestoreWindow());
         QuitCommand = new RelayCommand(o =>
         {
             Cleanup();
@@ -123,5 +125,32 @@ public class MainViewModel : ViewModelBase
         {
             Logger.LogError("Error during MainViewModel cleanup", ex);
         }
+    }
+
+    private void RestoreWindow()
+    {
+        CurrentView = HomeVM;
+
+        var mainWindow = Application.Current?.MainWindow;
+        if (mainWindow == null)
+        {
+            Logger.LogWarning("Não foi possível restaurar a janela principal porque ela não foi encontrada");
+            return;
+        }
+
+        if (mainWindow.Visibility != Visibility.Visible)
+        {
+            mainWindow.Show();
+        }
+
+        if (mainWindow.WindowState == WindowState.Minimized)
+        {
+            mainWindow.WindowState = WindowState.Normal;
+        }
+
+        mainWindow.Activate();
+        mainWindow.Topmost = true;
+        mainWindow.Topmost = false;
+        mainWindow.Focus();
     }
 }

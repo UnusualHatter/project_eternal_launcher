@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using LauncherTF2.Core;
 
@@ -17,82 +18,39 @@ public class GameService
     {
         try
         {
-            Logger.LogInfo("Attempting to launch TF2");
+            Logger.LogInfo("Tentando iniciar o TF2");
 
             var settings = _settingsService.GetSettings();
             if (settings == null)
             {
-                Logger.LogError("Settings are null, cannot launch game");
+                Logger.LogError("As configurações estão nulas, não é possível iniciar o jogo");
                 return false;
             }
 
             var args = settings.LaunchArgs ?? "";
 
-            // Validate Steam path
-            if (string.IsNullOrWhiteSpace(settings.SteamPath) || !Directory.Exists(settings.SteamPath))
+            if (!IsSteamPathValid(settings.SteamPath))
             {
-                Logger.LogWarning($"Steam path is invalid or doesn't exist: {settings.SteamPath}");
-                // Continue anyway, Steam URL launch might still work
+                Logger.LogWarning($"O caminho do Steam é inválido ou não existe: {settings.SteamPath}");
             }
 
-            // Start DLL Injection background monitoring
-            try
+            if (!StartRuntimeMonitoring())
             {
-                InjectionService.Instance.StartMonitoring();
-                Logger.LogInfo("Injection monitoring started");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning("Failed to start injection monitoring", ex);
-                // Continue anyway, injection is optional
+                Logger.LogWarning("O monitoramento de runtime não pôde ser iniciado");
             }
 
-            // Launch the game via Steam
-            var steamUrl = $"steam://rungameid/440//{args}";
-            Logger.LogInfo($"Launching TF2 with URL: {steamUrl}");
-
-            try
+            if (!TryLaunchThroughSteam(args))
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = steamUrl,
-                    UseShellExecute = true
-                });
-                Logger.LogInfo("TF2 launch command sent successfully");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("Failed to launch TF2 via Steam", ex);
                 return false;
             }
 
-            // Minimize to Tray
-            Application.Current?.Dispatcher?.Invoke(() =>
-            {
-                try
-                {
-                    var mainWindow = Application.Current.MainWindow;
-                    if (mainWindow != null)
-                    {
-                        mainWindow.Hide();
-                        Logger.LogInfo("Launcher minimized to tray");
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Main window is null, cannot minimize to tray");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError("Failed to minimize to tray", ex);
-                }
-            });
+            MinimizarJanelaParaTray();
 
             return true;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Unexpected error launching TF2", ex);
+            Logger.LogError("Erro inesperado ao iniciar o TF2", ex);
             return false;
         }
     }
@@ -104,31 +62,31 @@ public class GameService
             var settings = _settingsService.GetSettings();
             if (settings == null || string.IsNullOrWhiteSpace(settings.SteamPath))
             {
-                Logger.LogWarning("Cannot validate game installation: settings or Steam path is null");
+                Logger.LogWarning("Não foi possível validar a instalação do jogo: configurações ou caminho do Steam ausentes");
                 return false;
             }
 
             var tf2Path = settings.SteamPath;
-            
+
             if (!Directory.Exists(tf2Path))
             {
-                Logger.LogWarning($"TF2 directory does not exist: {tf2Path}");
+                Logger.LogWarning($"O diretório do TF2 não existe: {tf2Path}");
                 return false;
             }
 
             var hl2Exe = Path.Combine(tf2Path, "hl2.exe");
             if (!File.Exists(hl2Exe))
             {
-                Logger.LogWarning($"hl2.exe not found in: {tf2Path}");
+                Logger.LogWarning($"O arquivo hl2.exe não foi encontrado em: {tf2Path}");
                 return false;
             }
 
-            Logger.LogInfo("Game installation validated successfully");
+            Logger.LogInfo("Instalação do jogo validada com sucesso");
             return true;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error validating game installation", ex);
+            Logger.LogError("Erro ao validar a instalação do jogo", ex);
             return false;
         }
     }
@@ -139,19 +97,68 @@ public class GameService
         {
             var processes = Process.GetProcessesByName("hl2");
             var isRunning = processes.Length > 0;
-            
+
             foreach (var proc in processes)
             {
                 proc.Dispose();
             }
 
-            Logger.LogDebug($"Game running check: {isRunning}");
+            Logger.LogDebug($"Verificação de jogo em execução: {isRunning}");
             return isRunning;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error checking if game is running", ex);
+            Logger.LogError("Erro ao verificar se o jogo está em execução", ex);
             return false;
         }
+    }
+
+    private bool TryLaunchThroughSteam(string args)
+    {
+        var steamUrl = $"steam://rungameid/440//{args}";
+        Logger.LogInfo($"Iniciando o TF2 com a URL: {steamUrl}");
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = steamUrl,
+            UseShellExecute = true
+        };
+
+        Process.Start(startInfo);
+        Logger.LogInfo("Comando de início do TF2 enviado com sucesso");
+        return true;
+    }
+
+    private bool StartRuntimeMonitoring()
+    {
+        try
+        {
+            InjectionService.Instance.StartMonitoring();
+            Logger.LogInfo("Monitoramento de runtime iniciado");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("Falha ao iniciar o monitoramento de runtime", ex);
+            return false;
+        }
+    }
+
+    private void MinimizarJanelaParaTray()
+    {
+        var mainWindow = Application.Current?.MainWindow;
+        if (mainWindow == null)
+        {
+            Logger.LogWarning("A janela principal não foi encontrada, então não foi possível minimizar para o tray");
+            return;
+        }
+
+        mainWindow.Hide();
+        Logger.LogInfo("Launcher minimizado para o tray");
+    }
+
+    private static bool IsSteamPathValid(string? steamPath)
+    {
+        return !string.IsNullOrWhiteSpace(steamPath) && Directory.Exists(steamPath);
     }
 }

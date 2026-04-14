@@ -30,6 +30,10 @@ public static class Logger
     public static void LogDebug(string message) => Log(LogLevel.Debug, message);
     public static void LogInfo(string message) => Log(LogLevel.Info, message);
     public static void LogWarning(string message) => Log(LogLevel.Warning, message);
+    /// <summary>
+    /// Registra aviso com exceção associada para preservar stack trace em cenários recuperáveis.
+    /// </summary>
+    public static void LogWarning(string message, Exception? exception) => Log(LogLevel.Warning, message, exception);
     public static void LogError(string message, Exception? exception = null) => Log(LogLevel.Error, message, exception);
 
     public static void Log(LogLevel level, string message, Exception? exception = null)

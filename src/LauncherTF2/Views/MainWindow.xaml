@@ -67,13 +67,13 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- System Tray Icon -->
-        <tb:TaskbarIcon x:Name="TrayIcon" ToolTipText="Eternal TF2 Launcher" DoubleClickCommand="{Binding HomeViewCommand}">
+        <tb:TaskbarIcon x:Name="TrayIcon" ToolTipText="Eternal TF2 Launcher" DoubleClickCommand="{Binding RestoreWindowCommand}">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Start RPC" Command="{Binding RpcVM.StartRpcCommand}"/>
                     <MenuItem Header="Stop RPC" Command="{Binding RpcVM.StopRpcCommand}"/>
                     <Separator/>
-                    <MenuItem Header="Open" Command="{Binding HomeViewCommand}"/>
+                    <MenuItem Header="Open" Command="{Binding RestoreWindowCommand}"/>
                     <MenuItem Header="Exit" Command="{Binding QuitCommand}"/>
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>

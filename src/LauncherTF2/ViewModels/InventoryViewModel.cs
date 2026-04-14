@@ -32,7 +32,7 @@ public class InventoryViewModel : ViewModelBase
         else
         {
             SourceUrl = "https://next.backpack.tf/";
-            Logger.Log("[InventoryViewModel] No SteamID detected. Defaulting to homepage.");
+            Logger.LogDebug("[InventoryViewModel] No SteamID detected. Defaulting to homepage.");
         }
     }
 }

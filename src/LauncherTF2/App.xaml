@@ -6,7 +6,9 @@
     <Application.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <core:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <core:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <core:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <core:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter"/>
 
         <!-- Colors (With Alpha/Transparency for Acrylic effect) -->
         <Color x:Key="BackgroundColor">#E618181b</Color>
