@@ -1,8 +1,12 @@
 using LauncherTF2.Core;
 using System.Collections.ObjectModel;
+using System.Windows.Media.Imaging;
 
 namespace LauncherTF2.Models;
 
+/// <summary>
+/// Represents a locally installed mod (VPK file or folder).
+/// </summary>
 public class ModModel : ViewModelBase
 {
     private string _name = string.Empty;
@@ -15,11 +19,10 @@ public class ModModel : ViewModelBase
     private DateTime _lastModified;
     private ModType _modType = ModType.Unknown;
     private string? _loadError;
-    private string _sourceLabel = "Instalado";
-    private ModSourceKind _sourceKind = ModSourceKind.Installed;
-    private string? _sourceUrl;
     private ObservableCollection<string> _categories = new();
-    private bool _isDownloading;
+    private long _sizeBytes;
+    private bool _isEnriched;
+    private BitmapImage? _thumbnailImage;
 
     public string Name
     {
@@ -81,51 +84,69 @@ public class ModModel : ViewModelBase
         set => SetProperty(ref _loadError, value);
     }
 
-    public string SourceLabel
-    {
-        get => _sourceLabel;
-        set => SetProperty(ref _sourceLabel, value);
-    }
-
-    public ModSourceKind SourceKind
-    {
-        get => _sourceKind;
-        set
-        {
-            if (SetProperty(ref _sourceKind, value))
-            {
-                OnPropertyChanged(nameof(IsInstalled));
-            }
-        }
-    }
-
-    public string? SourceUrl
-    {
-        get => _sourceUrl;
-        set => SetProperty(ref _sourceUrl, value);
-    }
-
     public ObservableCollection<string> Categories
     {
         get => _categories;
         set => SetProperty(ref _categories, value);
     }
 
-    public bool IsDownloading
+    /// <summary>
+    /// Total size of the mod in bytes (file or folder).
+    /// </summary>
+    public long SizeBytes
     {
-        get => _isDownloading;
-        set => SetProperty(ref _isDownloading, value);
+        get => _sizeBytes;
+        set => SetProperty(ref _sizeBytes, value);
     }
 
-    public bool IsInstalled => SourceKind == ModSourceKind.Installed;
+    /// <summary>
+    /// True once GameBanana metadata (thumbnail + author) has been applied.
+    /// Used by the UI to show a subtle indicator or animate the card.
+    /// </summary>
+    public bool IsEnriched
+    {
+        get => _isEnriched;
+        set => SetProperty(ref _isEnriched, value);
+    }
+
+    /// <summary>
+    /// Pre-built BitmapImage set by the enrichment service after downloading
+    /// the GameBanana thumbnail. Using BitmapImage directly avoids WPF's
+    /// string-to-ImageSource TypeConverter URI caching issues.
+    /// Null until enrichment completes.
+    /// </summary>
+    public BitmapImage? ThumbnailImage
+    {
+        get => _thumbnailImage;
+        set => SetProperty(ref _thumbnailImage, value);
+    }
+
+    /// <summary>
+    /// Human-readable label for the mod type (VPK, Folder, etc).
+    /// </summary>
+    public string TypeLabel => ModType switch
+    {
+        ModType.Vpk => "VPK",
+        ModType.Folder => "Folder",
+        _ => "Custom"
+    };
+
+    /// <summary>
+    /// Human-readable file size string.
+    /// </summary>
+    public string SizeLabel
+    {
+        get
+        {
+            if (SizeBytes <= 0) return "—";
+            if (SizeBytes < 1024) return $"{SizeBytes} B";
+            if (SizeBytes < 1024 * 1024) return $"{SizeBytes / 1024.0:F1} KB";
+            if (SizeBytes < 1024 * 1024 * 1024) return $"{SizeBytes / (1024.0 * 1024):F1} MB";
+            return $"{SizeBytes / (1024.0 * 1024 * 1024):F2} GB";
+        }
+    }
 
     public bool HasError => !string.IsNullOrEmpty(_loadError);
-}
-
-public enum ModSourceKind
-{
-    Installed,
-    Online
 }
 
 public enum ModType

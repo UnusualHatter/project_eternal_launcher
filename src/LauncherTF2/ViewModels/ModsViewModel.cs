@@ -1,44 +1,36 @@
 using LauncherTF2.Core;
 using LauncherTF2.Models;
 using LauncherTF2.Services;
+using LauncherTF2.Views;
+using SharpCompress.Common;
+using SharpCompress.Readers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+using System.IO;
+using System.IO.Compression;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 
 namespace LauncherTF2.ViewModels;
 
+/// <summary>
+/// ViewModel for the Mod Library tab — manages the local mod collection,
+/// filtering, toggling, removing, and installing mods via drag & drop.
+/// </summary>
 public class ModsViewModel : ViewModelBase
 {
-    private const int PageSize = 8;
     private readonly ModManagerService _modService;
-    private readonly GameBananaModService _gameBananaModService;
-    private readonly List<ModModel> _installedMods = new();
-    private readonly List<ModModel> _onlineMods = new();
+    private readonly GameBananaEnrichmentService _enrichmentService;
     private ObservableCollection<ModModel> _allMods;
-    private ObservableCollection<ModModel> _displayedMods;
-    private ICollectionView _displayedModsView;
-    private int _currentPage = 1;
-    private bool _hasMoreMods;
-    private bool _hasMoreOnlinePages;
-    private int _onlinePage = 1;
-    private int _onlinePerPage;
-    private int _onlineTotalRecords;
-    private bool _isDownloadingMod;
-    private bool _isAutoPagingFromScroll;
+    private ICollectionView _filteredModsView;
     private string _searchQuery = string.Empty;
     private string _currentFilter = "All";
     private bool _isGridView = true;
-    private ObservableCollection<GameSection> _gameSections = new();
-    private GameSection? _selectedSection;
-    private string _selectedSort = "new";
-    private bool _applyFiltersOnlyToInstalled;
-    private bool _isLoadingOnlineCatalog;
-    private string _catalogStatus = "Local catalog loaded.";
+    private bool _isDropPanelExpanded = true;
+    private bool _isInstalling;
+    private string _statusMessage = string.Empty;
 
     public ObservableCollection<ModModel> AllMods
     {
@@ -46,10 +38,10 @@ public class ModsViewModel : ViewModelBase
         set => SetProperty(ref _allMods, value);
     }
 
-    public ICollectionView DisplayedModsView
+    public ICollectionView FilteredModsView
     {
-        get => _displayedModsView;
-        set => SetProperty(ref _displayedModsView, value);
+        get => _filteredModsView;
+        set => SetProperty(ref _filteredModsView, value);
     }
 
     public string SearchQuery
@@ -59,8 +51,7 @@ public class ModsViewModel : ViewModelBase
         {
             if (SetProperty(ref _searchQuery, value))
             {
-                ResetPagination();
-                _ = LoadOnlineCatalogAsync();
+                FilteredModsView?.Refresh();
             }
         }
     }
@@ -72,7 +63,7 @@ public class ModsViewModel : ViewModelBase
         {
             if (SetProperty(ref _currentFilter, value))
             {
-                ResetPagination();
+                FilteredModsView?.Refresh();
             }
         }
     }
@@ -83,458 +74,540 @@ public class ModsViewModel : ViewModelBase
         set => SetProperty(ref _isGridView, value);
     }
 
-    public ObservableCollection<GameSection> GameSections
+    public bool IsDropPanelExpanded
     {
-        get => _gameSections;
-        private set => SetProperty(ref _gameSections, value);
+        get => _isDropPanelExpanded;
+        set => SetProperty(ref _isDropPanelExpanded, value);
     }
 
-    public GameSection? SelectedSection
+    public bool IsInstalling
     {
-        get => _selectedSection;
-        set
-        {
-            if (SetProperty(ref _selectedSection, value))
-            {
-                ResetPagination();
-                _ = LoadOnlineCatalogAsync();
-            }
-        }
+        get => _isInstalling;
+        set => SetProperty(ref _isInstalling, value);
     }
 
-    public string SelectedSort
+    public string StatusMessage
     {
-        get => _selectedSort;
-        set
-        {
-            if (SetProperty(ref _selectedSort, value))
-            {
-                ResetPagination();
-                _ = LoadOnlineCatalogAsync();
-            }
-        }
+        get => _statusMessage;
+        set => SetProperty(ref _statusMessage, value);
     }
 
-    public ObservableCollection<string> SortOptions { get; } = new(new[] { "new", "updated" });
+    // Computed stats
+    public int TotalModsCount => _allMods?.Count ?? 0;
+    public int EnabledCount => _allMods?.Count(m => m.IsEnabled) ?? 0;
+    public int DisabledCount => TotalModsCount - EnabledCount;
 
-    public bool ApplyFiltersOnlyToInstalled
-    {
-        get => _applyFiltersOnlyToInstalled;
-        set
-        {
-            if (SetProperty(ref _applyFiltersOnlyToInstalled, value))
-            {
-                ResetPagination();
-            }
-        }
-    }
+    public string CustomFolderPath => _modService.CustomFolderPath;
 
-    public bool HasMoreMods
-    {
-        get => _hasMoreMods;
-        set => SetProperty(ref _hasMoreMods, value);
-    }
-
-    public bool IsDownloadingMod
-    {
-        get => _isDownloadingMod;
-        set => SetProperty(ref _isDownloadingMod, value);
-    }
-
-    public bool IsLoadingOnlineCatalog
-    {
-        get => _isLoadingOnlineCatalog;
-        set => SetProperty(ref _isLoadingOnlineCatalog, value);
-    }
-
-    public string CatalogStatus
-    {
-        get => _catalogStatus;
-        set => SetProperty(ref _catalogStatus, value);
-    }
-
-    public string DebugPaginationStatus
-    {
-        get => $"Page: {_onlinePage}, HasMore: {_hasMoreOnlinePages}, PerPage: {_onlinePerPage}, Total: {_onlineTotalRecords}, DisplayedCount: {_displayedMods.Count}";
-    }
-
-    public ICommand ChangeFilterCommand { get; }
+    // Commands
     public ICommand ToggleViewModeCommand { get; }
     public ICommand ToggleModActivationCommand { get; }
-    public ICommand LoadMoreModsCommand { get; }
-    public ICommand DownloadOnlineModCommand { get; }
-    public ICommand OpenModPageCommand { get; }
-    public ICommand RefreshCatalogCommand { get; }
-    public ICommand DebugLoadMoreCommand { get; }
+    public ICommand RemoveModCommand { get; }
+    public ICommand RefreshCommand { get; }
+    public ICommand OpenModsFolderCommand { get; }
+    public ICommand ChangeFilterCommand { get; }
+    public ICommand ToggleDropPanelCommand { get; }
 
     public ModsViewModel()
     {
         _modService = new ModManagerService();
-        _gameBananaModService = new GameBananaModService();
-        _installedMods.AddRange(_modService.GetInstalledMods());
-        _allMods = new ObservableCollection<ModModel>(_installedMods);
-        _displayedMods = new ObservableCollection<ModModel>(_allMods.Take(PageSize));
+        _enrichmentService = new GameBananaEnrichmentService();
+        _allMods = new ObservableCollection<ModModel>();
+        _filteredModsView = CollectionViewSource.GetDefaultView(_allMods);
+        _filteredModsView.Filter = FilterMod;
 
-        _displayedModsView = CollectionViewSource.GetDefaultView(_displayedMods);
-        RebuildVisibleMods();
-
-        GameSections.Add(new GameSection { Id = 0, Name = "All" });
-        SelectedSection = GameSections.First();
-
+        ToggleViewModeCommand = new RelayCommand(_ => IsGridView = !IsGridView);
         ChangeFilterCommand = new RelayCommand(o => CurrentFilter = o?.ToString() ?? "All");
-        ToggleViewModeCommand = new RelayCommand(o => IsGridView = !IsGridView);
+        ToggleDropPanelCommand = new RelayCommand(_ => IsDropPanelExpanded = !IsDropPanelExpanded);
+
         ToggleModActivationCommand = new RelayCommand(o =>
         {
-            if (o is ModModel mod && mod.IsInstalled)
+            if (o is ModModel mod)
             {
                 _modService.ToggleMod(mod);
-                ResetPagination();
+                RefreshStats();
             }
         });
-        LoadMoreModsCommand = new RelayCommand(async _ => await LoadMoreAsync(), _ => HasMoreMods && !IsLoadingOnlineCatalog);
-        DownloadOnlineModCommand = new RelayCommand(async o => await DownloadOnlineModAsync(o as ModModel), o => o is ModModel mod && !mod.IsInstalled && !mod.IsDownloading);
-        OpenModPageCommand = new RelayCommand(o => OpenModPage(o as ModModel), o => o is ModModel mod && !string.IsNullOrWhiteSpace(mod.SourceUrl));
-        RefreshCatalogCommand = new RelayCommand(async _ => await LoadOnlineCatalogAsync(), _ => !IsLoadingOnlineCatalog);
-        DebugLoadMoreCommand = new RelayCommand(async _ => 
+
+        RemoveModCommand = new RelayCommand(o =>
         {
-            Logger.LogInfo($"[DEBUG-MANUAL] Before: {DebugPaginationStatus}");
-            await LoadNextOnlinePageAsync();
-            Logger.LogInfo($"[DEBUG-MANUAL] After: {DebugPaginationStatus}");
-        }, _ => true);
-    }
-
-    private bool MatchesFilters(ModModel mod)
-    {
-        if (ApplyFiltersOnlyToInstalled && mod.SourceKind != ModSourceKind.Installed)
-        {
-            return false;
-        }
-
-        var searchQuery = SearchQuery.Trim();
-        var matchesSearch = string.IsNullOrWhiteSpace(searchQuery) ||
-                            mod.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                            mod.Author.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                            mod.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                            mod.Categories.Any(category => category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
-
-        bool matchesState = CurrentFilter switch
-        {
-            "Enabled" => mod.SourceKind == ModSourceKind.Installed && mod.IsEnabled,
-            "Disabled" => mod.SourceKind == ModSourceKind.Installed && !mod.IsEnabled,
-            _ => true
-        };
-
-        bool matchesCategory = SelectedSection == null ||
-                                SelectedSection.Id == 0 ||
-                                mod.Categories.Any(category => category.Equals(SelectedSection.Name, StringComparison.OrdinalIgnoreCase));
-
-        return matchesSearch && matchesState && matchesCategory;
-    }
-
-    private void RebuildVisibleMods()
-    {
-        var filtered = _allMods
-            .Where(MatchesFilters)
-            .OrderBy(mod => mod.SourceKind)
-            .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var totalToShow = Math.Min(_currentPage * PageSize, filtered.Count);
-
-        _displayedMods.Clear();
-        foreach (var mod in filtered.Take(totalToShow))
-        {
-            _displayedMods.Add(mod);
-        }
-
-        HasMoreMods = totalToShow < filtered.Count || _hasMoreOnlinePages;
-        CommandManager.InvalidateRequerySuggested();
-    }
-
-    private void ResetPagination()
-    {
-        _currentPage = 1;
-        RebuildVisibleMods();
-    }
-
-    private async Task LoadMoreAsync()
-    {
-        if (IsLoadingOnlineCatalog || _isAutoPagingFromScroll)
-        {
-            return;
-        }
-
-        Logger.LogInfo($"[LoadMore] Starting - hasMoreLocal={HasMoreMods}, hasMoreOnline={_hasMoreOnlinePages}");
-
-        var filtered = _allMods
-            .Where(MatchesFilters)
-            .OrderBy(mod => mod.SourceKind)
-            .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var totalShown = Math.Min(_currentPage * PageSize, filtered.Count);
-        if (totalShown < filtered.Count)
-        {
-            Logger.LogInfo($"[LoadMore] Loading local page {_currentPage + 1}");
-            LoadMoreMods();
-            return;
-        }
-
-        if (_hasMoreOnlinePages)
-        {
-            Logger.LogInfo($"[LoadMore] Loading online page {_onlinePage + 1}");
-            await LoadNextOnlinePageAsync();
-        }
-        else
-        {
-            Logger.LogInfo("[LoadMore] No more pages available");
-        }
-    }
-
-    private void LoadMoreMods()
-    {
-        if (!HasMoreMods)
-        {
-            return;
-        }
-
-        _currentPage++;
-        RebuildVisibleMods();
-    }
-
-    private async Task LoadNextOnlinePageAsync()
-    {
-        if (!_hasMoreOnlinePages || IsLoadingOnlineCatalog)
-        {
-            Logger.LogInfo($"[NextPage] Skipped - hasMore={_hasMoreOnlinePages}, loading={IsLoadingOnlineCatalog}");
-            return;
-        }
-
-        IsLoadingOnlineCatalog = true;
-        CatalogStatus = "Loading more online mods...";
-        Logger.LogInfo($"[NextPage] Fetching page {_onlinePage + 1}");
-
-        try
-        {
-            int? sectionId = SelectedSection?.Id > 0 ? SelectedSection.Id : null;
-            var nextPage = _onlinePage + 1;
-            var pageResult = await _gameBananaModService.GetCatalogPageAsync(sectionId, SelectedSort, SearchQuery, nextPage);
-
-            Logger.LogInfo($"[NextPage] Got {pageResult.Mods.Count} mods, hasMore={pageResult.HasMore}");
-            Logger.LogInfo($"[DEBUG] {DebugPaginationStatus}");
-
-            _onlinePage = nextPage;
-            _hasMoreOnlinePages = pageResult.HasMore;
-            _onlinePerPage = pageResult.PerPage;
-            _onlineTotalRecords = pageResult.TotalRecords;
-
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            if (o is ModModel mod)
             {
-                _onlineMods.AddRange(pageResult.Mods);
-                RebuildCatalog();
-                CatalogStatus = pageResult.Mods.Count > 0
-                    ? $"Loaded additional mods: {pageResult.Mods.Count} items"
-                    : "No additional mods were found.";
-            });
-        }
-        catch (Exception ex)
+                var confirmed = ConfirmDialog.Show(
+                    "Remove Mod",
+                    $"Are you sure you want to permanently remove \"{mod.Name}\"?\nThis will delete the mod files from your disk.");
+
+                if (confirmed)
+                {
+                    var success = _modService.RemoveMod(mod);
+                    if (success)
+                    {
+                        _allMods.Remove(mod);
+                        RefreshStats();
+                        StatusMessage = $"Removed: {mod.Name}";
+                    }
+                    else
+                    {
+                        StatusMessage = $"Failed to remove: {mod.Name}";
+                    }
+                }
+            }
+        });
+
+        RefreshCommand = new RelayCommand(_ => LoadMods());
+
+        OpenModsFolderCommand = new RelayCommand(_ =>
         {
-            Logger.LogWarning("Failed to load next online catalog page", ex);
-            CatalogStatus = "Failed to load additional mods.";
-        }
-        finally
-        {
-            IsLoadingOnlineCatalog = false;
-        }
+            try
+            {
+                var path = _modService.CustomFolderPath;
+                if (Directory.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = path,
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    StatusMessage = "TF2 custom folder not found. Check your Steam path in Settings.";
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to open mods folder", ex);
+                StatusMessage = "Could not open mods folder.";
+            }
+        });
+
+        // Initialize mod list
+        LoadMods();
     }
 
-    private void RebuildCatalog()
+    /// <summary>
+    /// Loads / refreshes the installed mods list from the TF2 custom folder.
+    /// </summary>
+    public void LoadMods()
     {
         _allMods.Clear();
+        _modService.RefreshMods();
 
-        foreach (var mod in _installedMods.Concat(_onlineMods)
-                     .OrderBy(mod => mod.SourceKind)
-                     .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var mod in _modService.GetInstalledMods()
+                     .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase))
         {
             _allMods.Add(mod);
         }
 
-        ResetPagination();
-    }
+        FilteredModsView?.Refresh();
+        RefreshStats();
 
-    public void Initialize()
-    {
-        _ = LoadSectionsAsync();
-        _ = LoadOnlineCatalogAsync();
-    }
+        StatusMessage = _allMods.Count > 0
+            ? $"Loaded {_allMods.Count} mods from {_modService.CustomFolderPath}"
+            : "No mods installed.";
 
-    public void Cleanup()
-    {
-        foreach (var mod in _onlineMods)
+        // Enrich in background — cards update progressively as metadata arrives
+        // Fire-and-forget with explicit exception logging so errors are never silently swallowed
+        var modsToEnrich = _allMods.ToList();
+        Task.Run(() => EnrichModsAsync(modsToEnrich)).ContinueWith(t =>
         {
-            mod.IsDownloading = false;
-        }
+            if (t.Exception != null)
+                Logger.LogError("EnrichModsAsync crashed", t.Exception.Flatten());
+        }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
     }
 
-    public async Task TryLoadMoreFromScrollAsync(double verticalOffset, double viewportHeight, double extentHeight)
+    /// <summary>
+    /// Enriches each mod with GameBanana metadata (thumbnail + author) in the background.
+    /// Runs concurrently with max 3 simultaneous requests.
+    /// Uses Dispatcher.BeginInvoke for fire-and-forget UI updates (no deadlock risk).
+    /// </summary>
+    private async Task EnrichModsAsync(List<ModModel> mods)
     {
-        if (IsLoadingOnlineCatalog || _isAutoPagingFromScroll)
+        if (mods.Count == 0) return;
+
+        Logger.LogInfo($"Starting GameBanana enrichment for {mods.Count} mods");
+
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        var semaphore = new System.Threading.SemaphoreSlim(3);
+        int enriched = 0;
+
+        var tasks = mods.Select(async mod =>
         {
+            await semaphore.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                string author = mod.Author;
+                string thumb = mod.ThumbnailPath;
+                bool gotEnriched = false;
+
+                // All heavy work on thread pool
+                var snapshot = new ModModel
+                {
+                    Name = mod.Name,
+                    Author = mod.Author,
+                    ThumbnailPath = mod.ThumbnailPath
+                };
+
+                await _enrichmentService.EnrichModAsync(snapshot).ConfigureAwait(false);
+
+                author = snapshot.Author;
+                thumb = snapshot.ThumbnailPath;
+                gotEnriched = snapshot.IsEnriched;
+
+                if (gotEnriched)
+                    System.Threading.Interlocked.Increment(ref enriched);
+
+                // Convert local path to BitmapImage on thread pool (IO already done, just decode)
+                System.Windows.Media.Imaging.BitmapImage? bitmap = null;
+                if (gotEnriched && !string.IsNullOrEmpty(thumb) && Path.IsPathRooted(thumb) && File.Exists(thumb))
+                {
+                    try
+                    {
+                        // Must be created on UI thread or as a frozen image
+                        var uri = new Uri(thumb);
+                        bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.UriSource = uri;
+                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                        bitmap.CreateOptions = System.Windows.Media.Imaging.BitmapCreateOptions.IgnoreImageCache;
+                        bitmap.EndInit();
+                        bitmap.Freeze(); // Make it cross-thread-safe
+                    }
+                    catch (Exception bex)
+                    {
+                        Logger.LogWarning($"Failed to build BitmapImage for '{mod.Name}': {bex.Message}");
+                        bitmap = null;
+                    }
+                }
+
+                // Fire-and-forget UI update — no await, no deadlock risk
+                var capturedBitmap = bitmap;
+                var capturedAuthor = author;
+                var capturedEnriched = gotEnriched;
+                dispatcher.BeginInvoke(() =>
+                {
+                    mod.Author = capturedAuthor;
+                    mod.IsEnriched = capturedEnriched;
+                    if (capturedBitmap != null)
+                        mod.ThumbnailImage = capturedBitmap;
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Enrichment failed for '{mod.Name}': {ex.Message}");
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }).ToList(); // Materialize so all tasks start immediately
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        Logger.LogInfo($"GameBanana enrichment complete: {enriched}/{mods.Count} mods enriched");
+    }
+
+    /// <summary>
+    /// Handles files/folders dropped onto the install panel.
+    /// Supports .zip, .rar, .7z archives and direct folders/VPK files.
+    /// </summary>
+    public async Task HandleDropAsync(string[] paths)
+    {
+        if (IsInstalling || paths == null || paths.Length == 0)
             return;
-        }
 
-        var shouldAutoFillPage = extentHeight <= viewportHeight + 1;
-        var reachedBottom = extentHeight > viewportHeight && verticalOffset + viewportHeight >= extentHeight - 120;
-
-        Logger.LogInfo($"[Scroll] offset={verticalOffset:F0}, viewport={viewportHeight:F0}, extent={extentHeight:F0}, reached={reachedBottom}, autoFill={shouldAutoFillPage}, hasMore={_hasMoreOnlinePages}");
-
-        if (!shouldAutoFillPage && !reachedBottom)
-        {
-            return;
-        }
+        IsInstalling = true;
+        int successCount = 0;
+        int failCount = 0;
 
         try
         {
-            _isAutoPagingFromScroll = true;
-            Logger.LogInfo("[Scroll] Triggering LoadMoreAsync");
-            await LoadMoreAsync();
+            foreach (var path in paths)
+            {
+                try
+                {
+                    StatusMessage = $"Installing: {Path.GetFileName(path)}...";
+
+                    if (Directory.Exists(path))
+                    {
+                        // Direct folder — copy to custom
+                        if (_modService.InstallMod(path))
+                            successCount++;
+                        else
+                            failCount++;
+                    }
+                    else if (File.Exists(path))
+                    {
+                        var ext = Path.GetExtension(path).ToLowerInvariant();
+
+                        if (ext == ".vpk")
+                        {
+                            // Direct VPK — copy to custom
+                            if (_modService.InstallMod(path))
+                                successCount++;
+                            else
+                                failCount++;
+                        }
+                        else if (ext == ".zip")
+                        {
+                            // ZIP — extract using built-in support
+                            await Task.Run(() => ExtractZip(path));
+                            successCount++;
+                        }
+                        else if (ext is ".rar" or ".7z" or ".7zip")
+                        {
+                            // RAR / 7Z — extract using SharpCompress
+                            await ExtractArchiveAsync(path);
+                            successCount++;
+                        }
+                        else
+                        {
+                            Logger.LogWarning($"Unsupported file type: {ext}");
+                            failCount++;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError($"Failed to install dropped item: {path}", ex);
+                    failCount++;
+                }
+            }
+
+            // Refresh the library after installing
+            LoadMods();
+
+            if (failCount == 0)
+                StatusMessage = $"Installed {successCount} mod(s) successfully!";
+            else
+                StatusMessage = $"Installed {successCount}, failed {failCount}.";
         }
         finally
         {
-            _isAutoPagingFromScroll = false;
+            IsInstalling = false;
         }
     }
 
-    private void OpenModPage(ModModel? mod)
+    /// <summary>
+    /// Extracts a .zip archive into the TF2 custom folder.
+    /// </summary>
+    private void ExtractZip(string zipPath)
     {
-        if (mod == null || string.IsNullOrWhiteSpace(mod.SourceUrl))
-        {
-            return;
-        }
+        var tempDir = Path.Combine(Path.GetTempPath(), $"tf2mod_{Guid.NewGuid():N}");
 
         try
         {
-            Process.Start(new ProcessStartInfo
+            Directory.CreateDirectory(tempDir);
+            ZipFile.ExtractToDirectory(zipPath, tempDir, true);
+            InstallExtractedContents(tempDir, Path.GetFileNameWithoutExtension(zipPath));
+        }
+        finally
+        {
+            TryCleanup(tempDir);
+        }
+    }
+
+    /// <summary>
+    /// Extracts .rar / .7z archives using SharpCompress into the TF2 custom folder.
+    /// </summary>
+    private async Task ExtractArchiveAsync(string archivePath)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"tf2mod_{Guid.NewGuid():N}");
+
+        try
+        {
+            Directory.CreateDirectory(tempDir);
+
+            await Task.Run(() =>
             {
-                FileName = mod.SourceUrl,
-                UseShellExecute = true
+                using var stream = File.OpenRead(archivePath);
+                using var reader = ReaderFactory.Open(stream);
+                while (reader.MoveToNextEntry())
+                {
+                    if (!reader.Entry.IsDirectory)
+                    {
+                        reader.WriteEntryToDirectory(tempDir, new ExtractionOptions
+                        {
+                            ExtractFullPath = true,
+                            Overwrite = true
+                        });
+                    }
+                }
             });
+
+            InstallExtractedContents(tempDir, Path.GetFileNameWithoutExtension(archivePath));
         }
-        catch (Exception ex)
+        finally
         {
-            Logger.LogError($"Failed to open mod page: {mod.SourceUrl}", ex);
-            CatalogStatus = "Could not open mod page.";
+            TryCleanup(tempDir);
         }
     }
 
-    private async Task DownloadOnlineModAsync(ModModel? mod)
+    /// <summary>
+    /// After extraction, determines how to install the contents with the following priority:
+    /// 
+    /// 1. VPK files anywhere in the archive → copy each VPK directly to custom/ (ignore folders, readmes, images)
+    /// 2. Folders with TF2 structure (materials/, models/, sound/, etc.) → install those folders
+    /// 3. Fallback → single top-level folder, or wrap multiple items
+    /// </summary>
+    private void InstallExtractedContents(string tempDir, string archiveName)
     {
-        if (mod == null || mod.IsInstalled || mod.IsDownloading || IsDownloadingMod)
+        // ── Priority 1: VPK files (anywhere in the extracted tree) ──────────
+        var vpkFiles = Directory.GetFiles(tempDir, "*.vpk", SearchOption.AllDirectories);
+        if (vpkFiles.Length > 0)
         {
+            foreach (var vpk in vpkFiles)
+            {
+                _modService.InstallMod(vpk);
+                Logger.LogInfo($"Installed VPK from archive: {Path.GetFileName(vpk)}");
+            }
             return;
         }
 
-        try
+        // ── Priority 2: Folders that look like TF2 mods ─────────────────────
+        var tf2ModFolders = FindTf2ModFolders(tempDir);
+        if (tf2ModFolders.Count > 0)
         {
-            mod.IsDownloading = true;
-            IsDownloadingMod = true;
-            CatalogStatus = $"Downloading {mod.Name}...";
-
-            var success = await _gameBananaModService.DownloadAndInstallModAsync(mod, _modService);
-
-            if (success)
+            foreach (var folder in tf2ModFolders)
             {
-                _installedMods.Clear();
-                _installedMods.AddRange(_modService.GetInstalledMods());
-                RebuildCatalog();
-                CatalogStatus = $"Mod downloaded and installed: {mod.Name}";
+                _modService.InstallMod(folder);
+                Logger.LogInfo($"Installed TF2 mod folder from archive: {Path.GetFileName(folder)}");
+            }
+            return;
+        }
+
+        // ── Priority 3: Fallback ─────────────────────────────────────────────
+        var topDirs = Directory.GetDirectories(tempDir);
+        var topFiles = Directory.GetFiles(tempDir);
+
+        if (topDirs.Length == 1 && topFiles.Length == 0)
+        {
+            // Single folder — install it directly
+            _modService.InstallMod(topDirs[0]);
+        }
+        else if (topDirs.Length > 0 || topFiles.Length > 0)
+        {
+            // Multiple items — wrap in a folder named after the archive
+            var wrapperDir = Path.Combine(tempDir, archiveName);
+            if (!Directory.Exists(wrapperDir))
+            {
+                Directory.CreateDirectory(wrapperDir);
+                foreach (var file in topFiles)
+                    File.Move(file, Path.Combine(wrapperDir, Path.GetFileName(file)));
+                foreach (var dir in topDirs)
+                    Directory.Move(dir, Path.Combine(wrapperDir, Path.GetFileName(dir)));
+            }
+            _modService.InstallMod(wrapperDir);
+        }
+    }
+
+    /// <summary>
+    /// Known TF2 mod subdirectories. A folder containing any of these is considered a valid TF2 mod.
+    /// </summary>
+    private static readonly string[] Tf2KnownSubdirs =
+    [
+        "materials", "models", "sound", "scripts", "cfg",
+        "particles", "resource", "maps", "media", "expressions"
+    ];
+
+    /// <summary>
+    /// Finds folders that contain TF2 mod structure, searching up to 2 levels deep.
+    /// </summary>
+    private static List<string> FindTf2ModFolders(string rootDir)
+    {
+        var result = new List<string>();
+
+        // Check rootDir itself
+        if (IsTf2ModFolder(rootDir))
+        {
+            result.Add(rootDir);
+            return result;
+        }
+
+        // Check direct children
+        foreach (var dir in Directory.GetDirectories(rootDir))
+        {
+            if (IsTf2ModFolder(dir))
+            {
+                result.Add(dir);
             }
             else
             {
-                CatalogStatus = $"Failed to download/install mod: {mod.Name}";
+                // One more level deep (e.g. archive → outer-folder → mod-folder)
+                foreach (var subDir in Directory.GetDirectories(dir))
+                {
+                    if (IsTf2ModFolder(subDir))
+                        result.Add(subDir);
+                }
             }
         }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error while downloading online mod: {mod.Name}", ex);
-            CatalogStatus = $"Error downloading mod: {mod.Name}";
-        }
-        finally
-        {
-            mod.IsDownloading = false;
-            IsDownloadingMod = false;
-            CommandManager.InvalidateRequerySuggested();
-        }
+
+        return result;
     }
 
-    private async Task LoadSectionsAsync()
+    private static bool IsTf2ModFolder(string path)
+    {
+        if (!Directory.Exists(path)) return false;
+
+        var childNames = Directory.GetDirectories(path)
+            .Select(d => Path.GetFileName(d).ToLowerInvariant())
+            .ToHashSet();
+
+        return Tf2KnownSubdirs.Any(known => childNames.Contains(known));
+    }
+
+
+    private static void TryCleanup(string path)
     {
         try
         {
-            var sections = await _gameBananaModService.GetSectionsAsync();
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                GameSections.Clear();
-                GameSections.Add(new GameSection { Id = 0, Name = "All" });
-                foreach (var section in sections.OrderBy(s => s.Name))
-                {
-                    GameSections.Add(section);
-                }
-
-                if (SelectedSection == null)
-                {
-                    SelectedSection = GameSections.FirstOrDefault();
-                }
-            });
+            if (Directory.Exists(path))
+                Directory.Delete(path, true);
         }
-        catch (Exception ex)
+        catch
         {
-            Logger.LogWarning("Failed to load sections", ex);
+            // Ignore cleanup errors
         }
     }
 
-    private async Task LoadOnlineCatalogAsync()
+    /// <summary>
+    /// Filter predicate for the CollectionView.
+    /// </summary>
+    private bool FilterMod(object obj)
     {
-        if (IsLoadingOnlineCatalog)
+        if (obj is not ModModel mod)
+            return false;
+
+        // State filter
+        var matchesFilter = CurrentFilter switch
         {
-            return;
+            "Enabled" => mod.IsEnabled,
+            "Disabled" => !mod.IsEnabled,
+            "VPK" => mod.ModType == ModType.Vpk,
+            "Folder" => mod.ModType == ModType.Folder,
+            _ => true // "All"
+        };
+
+        if (!matchesFilter) return false;
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var query = SearchQuery.Trim();
+            return mod.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                   mod.Author.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                   mod.Description.Contains(query, StringComparison.OrdinalIgnoreCase);
         }
 
-        IsLoadingOnlineCatalog = true;
-        CatalogStatus = "Loading online mods...";
+        return true;
+    }
 
-        try
-        {
-            int? sectionId = SelectedSection?.Id > 0 ? SelectedSection.Id : null;
-            Logger.LogInfo($"[LoadCatalog] Page 1 - section={sectionId}, sort={SelectedSort}, search={SearchQuery}");
-            var pageResult = await _gameBananaModService.GetCatalogPageAsync(sectionId, SelectedSort, SearchQuery, 1);
-
-            _onlinePage = 1;
-            _hasMoreOnlinePages = pageResult.HasMore;
-            _onlinePerPage = pageResult.PerPage;
-            _onlineTotalRecords = pageResult.TotalRecords;
-
-            Logger.LogInfo($"[LoadCatalog] Got {pageResult.Mods.Count} mods, hasMore={_hasMoreOnlinePages}, perPage={_onlinePerPage}, total={_onlineTotalRecords}");
-            Logger.LogInfo($"[DEBUG] {DebugPaginationStatus}");
-
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                _onlineMods.Clear();
-                _onlineMods.AddRange(pageResult.Mods);
-                RebuildCatalog();
-                CatalogStatus = pageResult.Mods.Count > 0
-                    ? $"Online catalog loaded: {pageResult.Mods.Count} mods"
-                    : "No online mods found.";
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning("Failed to load online catalog", ex);
-            CatalogStatus = "Failed to load online catalog.";
-        }
-        finally
-        {
-            IsLoadingOnlineCatalog = false;
-        }
+    /// <summary>
+    /// Notifies the UI that stat properties have changed.
+    /// </summary>
+    private void RefreshStats()
+    {
+        OnPropertyChanged(nameof(TotalModsCount));
+        OnPropertyChanged(nameof(EnabledCount));
+        OnPropertyChanged(nameof(DisabledCount));
     }
 }

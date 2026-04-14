@@ -24,10 +24,7 @@ public class MainViewModel : ViewModelBase
         get => _currentView;
         set
         {
-            if (_currentView == ModsVM && value != ModsVM)
-            {
-                ModsVM.Cleanup();
-            }
+            // No cleanup needed when switching away from Mods
             SetProperty(ref _currentView, value);
 
             bool wasHome = IsHome;
@@ -67,7 +64,7 @@ public class MainViewModel : ViewModelBase
         ModsViewCommand = new RelayCommand(o =>
         {
             CurrentView = ModsVM;
-            ModsVM.Initialize();
+            ModsVM.LoadMods();
         });
         SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
         RestoreWindowCommand = new RelayCommand(o => RestoreWindow());
@@ -111,8 +108,6 @@ public class MainViewModel : ViewModelBase
     {
         try
         {
-            ModsVM.Cleanup();
-            
             // Ensure RPC service stops
             Tf2RichPresenceService.Instance.Stop();
             

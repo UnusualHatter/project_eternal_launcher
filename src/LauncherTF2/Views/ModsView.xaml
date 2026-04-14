@@ -8,24 +8,16 @@
              mc:Ignorable="d" 
              d:DesignHeight="720" d:DesignWidth="1030">
     <UserControl.Resources>
-        <!-- Converter for switching layouts -->
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        
-        <Style x:Key="CategoryBadgeStyle" TargetType="Border">
-            <Setter Property="Background" Value="#262626"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="Margin" Value="0,0,6,6"/>
-        </Style>
 
-        <!-- Toggle Switch Style (Simplified for this view) -->
-        <Style x:Key="ModActivationToggleStyle" TargetType="CheckBox">
+        <!-- Toggle Switch Style -->
+        <Style x:Key="ModToggleStyle" TargetType="CheckBox">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
-                        <Border x:Name="Background" Width="40" Height="20" Background="#444" CornerRadius="10">
-                            <Ellipse x:Name="Dot" Width="14" Height="14" Fill="White" HorizontalAlignment="Left" Margin="3,0">
+                        <Border x:Name="Background" Width="40" Height="20" Background="#333" CornerRadius="10">
+                            <Ellipse x:Name="Dot" Width="14" Height="14" Fill="#888" HorizontalAlignment="Left" Margin="3,0">
                                 <Ellipse.RenderTransform>
                                     <TranslateTransform X="0"/>
                                 </Ellipse.RenderTransform>
@@ -34,6 +26,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Background" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Dot" Property="Fill" Value="White"/>
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
@@ -55,317 +48,526 @@
             </Setter>
         </Style>
 
-        <!-- Grid Item Template -->
+        <!-- Filter Pill Button Style -->
+        <Style x:Key="FilterPillStyle" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" Background="#1F1F1F" CornerRadius="14" Padding="14,6" BorderThickness="1" BorderBrush="#2A2A2A">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="#555"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Icon Button Style -->
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Background" Value="#1F1F1F"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="8" Padding="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#333"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#444"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Delete Button Style -->
+        <Style x:Key="DeleteButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6" Padding="6" Width="28" Height="28">
+                            <Path x:Name="Icon" Fill="#666" Width="14" Height="14" Stretch="Uniform"
+                                  Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#3D1515"/>
+                                <Setter TargetName="Icon" Property="Fill" Value="#FF5252"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Mod Card (Grid View) -->
         <DataTemplate x:Key="GridModTemplate">
-            <Border Margin="8" Background="{StaticResource CardBrush}" CornerRadius="12" Width="250" Height="350">
+            <Border Margin="6" Background="{StaticResource CardBrush}" CornerRadius="12" Cursor="Arrow"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.02" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.02" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.0" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.0" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="160"/>
+                        <RowDefinition Height="130"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    
-                    <!-- Thumbnail -->
+
+                    <!-- Thumbnail — uses pre-built BitmapImage when GB enrichment applied,
+                         falls back to ThumbnailPath (pack URI / local path) otherwise -->
                     <Border Grid.Row="0" CornerRadius="12,12,0,0" Background="#111">
-                        <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill" Opacity="0.9"/>
+                        <Image x:Name="CardThumbnail" Stretch="UniformToFill">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Opacity" Value="0.7"/>
+                                    <!-- Default: use ThumbnailPath (pack URI) -->
+                                    <Setter Property="Source" Value="{Binding ThumbnailPath}"/>
+                                    <Style.Triggers>
+                                        <!-- When enriched: switch to pre-built BitmapImage (no TypeConverter / URI cache issues) -->
+                                        <DataTrigger Binding="{Binding IsEnriched}" Value="True">
+                                            <Setter Property="Source" Value="{Binding ThumbnailImage}"/>
+                                        </DataTrigger>
+                                        <!-- Smooth fade-in on enrichment -->
+                                        <DataTrigger Binding="{Binding IsEnriched}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="0.3" To="0.92"
+                                                                         Duration="0:0:0.5"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
                     </Border>
 
-                    <Border Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Background="#AA111111" CornerRadius="12" Padding="10,5">
-                        <TextBlock Text="{Binding SourceLabel}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                    <!-- Type Badge (top-right) -->
+                    <Border Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" 
+                            Background="#CC111111" CornerRadius="10" Padding="8,4">
+                        <TextBlock Text="{Binding TypeLabel}" Foreground="White" FontSize="10" FontWeight="Bold"/>
                     </Border>
-                    
+
+                    <!-- GameBanana Badge (top-left, only when enriched) -->
+                    <Border Grid.Row="0" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10"
+                            CornerRadius="10" Padding="6,3"
+                            Visibility="{Binding IsEnriched, Converter={StaticResource BoolToVis}}">
+                        <Border.Background>
+                            <SolidColorBrush Color="#CC1A1A2E"/>
+                        </Border.Background>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="GB" Foreground="#88AEFF" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Content -->
-                    <Border Grid.Row="1" Padding="18,15">
-                        <StackPanel>
-                            <Button Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left"
-                                    Cursor="Hand"
-                                    Command="{Binding DataContext.OpenModPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}">
-                                <TextBlock Text="{Binding Name}" Foreground="White" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                            </Button>
-                            <TextBlock Text="{Binding Author}" Foreground="#888" FontSize="12" Margin="0,3,0,6" TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Grid.Row="1" Margin="14,12,14,14">
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="15" FontWeight="Bold" 
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,0,3"/>
+                        <TextBlock Text="{Binding Author}" Foreground="#777" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding Description}" Foreground="#999" FontSize="11" TextWrapping="Wrap" 
+                                   MaxHeight="36" TextTrimming="CharacterEllipsis" Margin="0,0,0,10"/>
 
-                            <ItemsControl ItemsSource="{Binding Categories}" Margin="0,0,0,10">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Style="{StaticResource CategoryBadgeStyle}">
-                                            <TextBlock Text="{Binding}" Foreground="#DADADA" FontSize="10" FontWeight="SemiBold"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <TextBlock Text="{Binding Description}" Foreground="#aaa" FontSize="11" TextWrapping="Wrap" MaxHeight="60" TextTrimming="CharacterEllipsis" Margin="0,0,0,12"/>
-                            
-                            <Grid Margin="0,12,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold"/>
-                                    <TextBlock Text=" • " Foreground="#666" VerticalAlignment="Center" FontSize="10"/>
-                                    <TextBlock Text="{Binding SourceLabel}" Foreground="#999" VerticalAlignment="Center" FontSize="10"/>
-                                </StackPanel>
-                                
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ModActivationToggleStyle}"
-                                              IsEnabled="{Binding IsInstalled}"
-                                              Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
-                                              Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              CommandParameter="{Binding}"/>
-                                    <Button Content="Download"
-                                            Padding="12,5"
-                                            Background="{StaticResource AccentBrush}"
-                                            Foreground="White"
-                                            BorderThickness="0"
-                                            Cursor="Hand"
-                                            Margin="8,0,0,0"
-                                            Visibility="{Binding IsInstalled, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                            IsEnabled="{Binding IsDownloading, Converter={StaticResource InverseBooleanConverter}}"
-                                            Command="{Binding DataContext.DownloadOnlineModCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <!-- List Item Template -->
-        <DataTemplate x:Key="ListModTemplate">
-            <Border Margin="0,0,0,10" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="15">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <Border Grid.Column="0" Width="60" Height="60" CornerRadius="8" Background="#111">
-                         <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill"/>
-                    </Border>
-                    
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0">
-                        <Button Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left"
-                                Cursor="Hand"
-                                Command="{Binding DataContext.OpenModPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}">
-                            <TextBlock Text="{Binding Name}" Foreground="White" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                        </Button>
-                        <TextBlock Text="{Binding Author}" Foreground="#888" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                        <ItemsControl ItemsSource="{Binding Categories}" Margin="0,6,0,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource CategoryBadgeStyle}">
-                                        <TextBlock Text="{Binding}" Foreground="#DADADA" FontSize="10" FontWeight="SemiBold"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <TextBlock Grid.Column="2" Text="{Binding Description}" Foreground="#aaa" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,20,0"/>
-
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                        <StackPanel Margin="0,0,20,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SourceLabel}" Foreground="#888" HorizontalAlignment="Right" FontSize="10"/>
-                        </StackPanel>
+                        <!-- Bottom row: Size + Version / Actions -->
                         <Grid>
-                            <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ModActivationToggleStyle}"
-                                      IsEnabled="{Binding IsInstalled}"
-                                      Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
-                                      Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      CommandParameter="{Binding}"/>
-                            <Button Content="Download"
-                                    Padding="12,4"
-                                    Background="{StaticResource AccentBrush}"
-                                    Foreground="White"
-                                    BorderThickness="0"
-                                    Cursor="Hand"
-                                    Visibility="{Binding IsInstalled, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                    IsEnabled="{Binding IsDownloading, Converter={StaticResource InverseBooleanConverter}}"
-                                    Command="{Binding DataContext.DownloadOnlineModCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
-                            <Button Content="Abrir"
-                                    Padding="10,4"
-                                    Margin="0,32,0,0"
-                                    Background="#2F2F2F"
-                                    Foreground="White"
-                                    BorderThickness="0"
-                                    Cursor="Hand"
-                                    Visibility="{Binding IsInstalled, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                    Command="{Binding DataContext.OpenModPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SizeLabel}" Foreground="#666" FontSize="10"/>
+                                <TextBlock Text=" • " Foreground="#444" FontSize="10"/>
+                                <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource DeleteButtonStyle}"
+                                        Command="{Binding DataContext.RemoveModCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="Remove mod" Margin="0,0,6,0"/>
+                                <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}" Style="{StaticResource ModToggleStyle}"
+                                          Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          CommandParameter="{Binding}"
+                                          ToolTip="Enable / Disable"/>
+                            </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <!-- Mod Card (List View) -->
+        <DataTemplate x:Key="ListModTemplate">
+            <Border Margin="0,0,0,6" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="14"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <EventTrigger RoutedEvent="MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.005" Duration="0:0:0.12"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.005" Duration="0:0:0.12"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.0" Duration="0:0:0.12"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.0" Duration="0:0:0.12"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="52"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Thumbnail -->
+                    <Border Grid.Column="0" Width="44" Height="44" CornerRadius="8" Background="#111">
+                        <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill"/>
+                    </Border>
+
+                    <!-- Info -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="14" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <TextBlock Text="{Binding Author}" Foreground="#777" FontSize="11"/>
+                            <TextBlock Text=" • " Foreground="#444" FontSize="11"/>
+                            <TextBlock Text="{Binding TypeLabel}" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Text=" • " Foreground="#444" FontSize="11"/>
+                            <TextBlock Text="{Binding SizeLabel}" Foreground="#666" FontSize="11"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Version -->
+                    <TextBlock Grid.Column="2" Text="{Binding Version}" Foreground="#666" FontSize="11" 
+                               VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                    <!-- Delete -->
+                    <Button Grid.Column="3" Style="{StaticResource DeleteButtonStyle}"
+                            Command="{Binding DataContext.RemoveModCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"
+                            ToolTip="Remove mod" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                    <!-- Toggle -->
+                    <CheckBox Grid.Column="4" IsChecked="{Binding IsEnabled, Mode=OneWay}" Style="{StaticResource ModToggleStyle}"
+                              Command="{Binding DataContext.ToggleModActivationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}" VerticalAlignment="Center"
+                              ToolTip="Enable / Disable"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
-    <Grid Margin="30,10,30,30">
+    <Grid Margin="30,10,30,20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="*"/>    <!-- Library -->
+            <RowDefinition Height="Auto"/>  <!-- Header -->
+            <RowDefinition Height="Auto"/>  <!-- Stats + Filters -->
+            <RowDefinition Height="*"/>     <!-- Mod List -->
+            <RowDefinition Height="Auto"/>  <!-- Drop Panel -->
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,25">
+        <!-- ═══════════════ HEADER ═══════════════ -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Search and Title -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <TextBlock Text="Mod Library" FontSize="32" FontWeight="Black" Foreground="White" VerticalAlignment="Center" Margin="0,0,40,0"/>
-                
-                <!-- Search Box -->
-                <Border Background="#222" CornerRadius="20" Width="300" Height="40" Padding="15,0">
-                    <Grid>
-                        <TextBlock Text="Search mods..." Foreground="#555" VerticalAlignment="Center" 
-                                   Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
-                        <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
-                                 Background="Transparent" BorderThickness="0" Foreground="White" VerticalContentAlignment="Center"/>
-                    </Grid>
-                </Border>
-            </StackPanel>
+            <!-- Title -->
+            <TextBlock Grid.Column="0" Text="Mod Library" FontSize="30" FontWeight="Black" Foreground="White" VerticalAlignment="Center"/>
 
-            <!-- View Toggles Only -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Command="{Binding RefreshCatalogCommand}" 
-                        Background="#333" 
-                        Foreground="White" 
-                        BorderThickness="0" 
-                        Cursor="Hand" 
-                        Width="36" Height="36" 
-                        Margin="0,0,8,0"
-                        ToolTip="Refresh Catalog">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" 
-                                                CornerRadius="6"
-                                                Padding="6">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#444"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
-                    <Path Fill="White" Width="16" Height="16" Stretch="Uniform">
-                        <Path.Data>
-                            M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z
-                        </Path.Data>
-                    </Path>
+            <!-- Search Box -->
+            <Border Grid.Column="1" Background="#1A1A1A" CornerRadius="20" Height="38" Padding="14,0" Margin="30,0" 
+                    BorderThickness="1" BorderBrush="#2A2A2A">
+                <Grid>
+                    <TextBlock Text="Search mods..." Foreground="#444" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                    <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
+                             Background="Transparent" BorderThickness="0" Foreground="White" 
+                             VerticalContentAlignment="Center" CaretBrush="White"/>
+                </Grid>
+            </Border>
+
+            <!-- Action Buttons -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Open Folder -->
+                <Button Style="{StaticResource IconButtonStyle}" Command="{Binding OpenModsFolderCommand}" ToolTip="Open custom folder" Margin="0,0,6,0">
+                    <Path Fill="#AAA" Width="16" Height="16" Stretch="Uniform"
+                          Data="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
                 </Button>
-
-                <Button Command="{Binding ToggleViewModeCommand}" Background="Transparent" BorderThickness="0" Cursor="Hand" Width="36" Height="36" ToolTip="Toggle View">
+                <!-- Refresh -->
+                <Button Style="{StaticResource IconButtonStyle}" Command="{Binding RefreshCommand}" ToolTip="Refresh mod list" Margin="0,0,6,0">
+                    <Path Fill="#AAA" Width="16" Height="16" Stretch="Uniform"
+                          Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </Button>
+                <!-- View Toggle -->
+                <Button Style="{StaticResource IconButtonStyle}" Command="{Binding ToggleViewModeCommand}" ToolTip="Toggle view mode">
                     <Grid>
-                        <Path Fill="#aaa" Width="18" Height="18" Stretch="Uniform" Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
-                            <Path.Data>
-                                M3 3h7v7H3V3zm9 0h7v7h-7V3zM3 12h7v7H3v-7zm9 0h7v7h-7v-7z
-                            </Path.Data>
-                        </Path>
-                        <Path Fill="#aaa" Width="18" Height="18" Stretch="Uniform" Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                            <Path.Data>
-                                M3 4h18v2H3V4zm0 6h18v2H3v-2zm0 6h18v2H3v-2z
-                            </Path.Data>
-                        </Path>
+                        <Path Fill="#AAA" Width="16" Height="16" Stretch="Uniform" 
+                              Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}"
+                              Data="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z"/>
+                        <Path Fill="#AAA" Width="16" Height="16" Stretch="Uniform" 
+                              Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                              Data="M3 4h18v2H3V4zm0 6h18v2H3v-2zm0 6h18v2H3v-2z"/>
                     </Grid>
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" 
-                                                CornerRadius="6"
-                                                Padding="6">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#333"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
                 </Button>
             </StackPanel>
         </Grid>
 
-        <!-- Mod Grid/List Container -->
-        <Grid Grid.Row="1">
+        <!-- ═══════════════ STATS + FILTERS ═══════════════ -->
+        <Grid Grid.Row="1" Margin="0,0,0,14">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0">
-                <TextBlock Text="{Binding CatalogStatus}" Foreground="#8A8A8A" Margin="0,0,0,10"/>
-                <ProgressBar IsIndeterminate="True" 
-                             Visibility="{Binding IsLoadingOnlineCatalog, Converter={StaticResource BoolToVis}}"
-                             HorizontalAlignment="Left" 
-                             VerticalAlignment="Center" 
-                             Width="200" 
-                             Height="3" 
-                             Margin="0,8,0,10"/>
-            </Grid>
-            <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewerStyle}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" ScrollChanged="ModsScrollViewer_OnScrollChanged">
-            <Grid>
-                <!-- Grid View -->
-                <ItemsControl ItemsSource="{Binding DisplayedModsView}" 
-                             ItemTemplate="{StaticResource GridModTemplate}"
-                             Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
+            <!-- Stats -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Foreground="#777" FontSize="12">
+                    <Run Text="{Binding TotalModsCount, Mode=OneWay}"/>
+                    <Run Text=" mods"/>
+                </TextBlock>
+                <TextBlock Text=" • " Foreground="#444" FontSize="12"/>
+                <TextBlock Foreground="#4CAF50" FontSize="12">
+                    <Run Text="{Binding EnabledCount, Mode=OneWay}"/>
+                    <Run Text=" enabled"/>
+                </TextBlock>
+                <TextBlock Text=" • " Foreground="#444" FontSize="12"/>
+                <TextBlock Foreground="#888" FontSize="12">
+                    <Run Text="{Binding DisabledCount, Mode=OneWay}"/>
+                    <Run Text=" disabled"/>
+                </TextBlock>
+                <TextBlock Text=" — " Foreground="#333" FontSize="12" Margin="8,0,0,0"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="400"/>
+            </StackPanel>
 
-                <!-- List View -->
-                <ItemsControl ItemsSource="{Binding DisplayedModsView}" 
-                             ItemTemplate="{StaticResource ListModTemplate}"
-                             Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
+            <!-- Filter Pills -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                <RadioButton Style="{StaticResource FilterPillStyle}" IsChecked="True" GroupName="ModFilter"
+                             Command="{Binding ChangeFilterCommand}" CommandParameter="All">
+                    <TextBlock Text="All" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </RadioButton>
+                <RadioButton Style="{StaticResource FilterPillStyle}" GroupName="ModFilter"
+                             Command="{Binding ChangeFilterCommand}" CommandParameter="Enabled">
+                    <TextBlock Text="Enabled" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </RadioButton>
+                <RadioButton Style="{StaticResource FilterPillStyle}" GroupName="ModFilter"
+                             Command="{Binding ChangeFilterCommand}" CommandParameter="Disabled">
+                    <TextBlock Text="Disabled" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </RadioButton>
+                <RadioButton Style="{StaticResource FilterPillStyle}" GroupName="ModFilter"
+                             Command="{Binding ChangeFilterCommand}" CommandParameter="VPK">
+                    <TextBlock Text="VPK" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </RadioButton>
+                <RadioButton Style="{StaticResource FilterPillStyle}" GroupName="ModFilter"
+                             Command="{Binding ChangeFilterCommand}" CommandParameter="Folder">
+                    <TextBlock Text="Folders" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </RadioButton>
+            </StackPanel>
+        </Grid>
 
-                <Border Background="#161616" CornerRadius="14" Padding="24" Margin="8" Visibility="{Binding DisplayedModsView.IsEmpty, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="No mods match your current filters. Try another section, search term, or refresh the catalog." 
-                               Foreground="#999" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>
-                </Border>
-            </Grid>
+        <!-- ═══════════════ MOD LIST / GRID ═══════════════ -->
+        <Grid Grid.Row="2">
+            <ScrollViewer Style="{StaticResource ModernScrollViewerStyle}" 
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <!-- Grid View -->
+                    <ItemsControl ItemsSource="{Binding FilteredModsView}" 
+                                  ItemTemplate="{StaticResource GridModTemplate}"
+                                  Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <!-- List View -->
+                    <ItemsControl ItemsSource="{Binding FilteredModsView}" 
+                                  ItemTemplate="{StaticResource ListModTemplate}"
+                                  Visibility="{Binding IsGridView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <!-- Empty State -->
+                    <Border Background="#141414" CornerRadius="16" Padding="40,50" Margin="8"
+                            Visibility="{Binding FilteredModsView.IsEmpty, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <!-- Folder Icon -->
+                            <Path Fill="#333" Width="48" Height="48" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,16"
+                                  Data="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                            <TextBlock Text="No mods installed" Foreground="#888" FontSize="18" FontWeight="SemiBold" 
+                                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="Drop VPK files, folders, or archives (.zip, .rar, .7z) below to install mods.&#x0a;Or place them directly in the TF2 custom folder." 
+                                       Foreground="#555" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420" Margin="0,0,0,20"/>
+                            <Button Content="Open Custom Folder" Command="{Binding OpenModsFolderCommand}"
+                                    Background="#1F1F1F" Foreground="White" FontWeight="SemiBold" FontSize="13"
+                                    Padding="20,10" BorderThickness="1" Cursor="Hand">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Bg" Background="{TemplateBinding Background}" 
+                                                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                                            BorderThickness="1" BorderBrush="#333">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="#2A2A2A"/>
+                                                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </ScrollViewer>
+        </Grid>
+
+        <!-- ═══════════════ DROP PANEL (Collapsible) ═══════════════ -->
+        <Grid Grid.Row="3" Margin="0,8,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Arrow toggle -->
+                <RowDefinition Height="Auto"/> <!-- Content -->
+            </Grid.RowDefinitions>
+
+            <!-- Toggle Arrow Button -->
+            <Button Grid.Row="0" HorizontalAlignment="Center"
+                    Command="{Binding ToggleDropPanelCommand}" Background="Transparent" BorderThickness="0"
+                    Cursor="Hand" ToolTip="Toggle install panel" Width="60" Height="20">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="4">
+                            <Path x:Name="ArrowPath" Fill="#555" Width="14" Height="8" Stretch="Uniform"
+                                  RenderTransformOrigin="0.5,0.5"
+                                  Data="M7 10l5 5 5-5z">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value>
+                                                <RotateTransform Angle="0"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDropPanelExpanded}" Value="False">
+                                                <Setter Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="180"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ArrowPath" Property="Fill" Value="#888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- Drop Zone Content (shown when expanded) -->
+            <Border Grid.Row="1" x:Name="DropZone" CornerRadius="12" MinHeight="110"
+                    AllowDrop="True" Drop="DropZone_Drop" DragEnter="DropZone_DragEnter" DragLeave="DropZone_DragLeave"
+                    Background="#0D0D0D" BorderThickness="2" BorderBrush="#222"
+                    Visibility="{Binding IsDropPanelExpanded, Converter={StaticResource BoolToVis}}">
+                <Grid Margin="20,14">
+                    <!-- Idle state -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding IsInstalling, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Fill="#444" Width="20" Height="20" Stretch="Uniform" Margin="0,0,8,0"
+                                  Data="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            <TextBlock Text="Drop mod files here to install" Foreground="#777" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="Supports .vpk, .zip, .rar, .7z files and folders"
+                                   Foreground="#444" FontSize="11" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Installing indicator -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding IsInstalling, Converter={StaticResource BoolToVis}}">
+                        <ProgressBar IsIndeterminate="True" Width="200" Height="3" Margin="0,0,0,10"/>
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="#AAA" FontSize="13" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

@@ -27,10 +27,13 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+# .NET build artifacts
+artifacts/
+*.nupkg
+*.snupkg
+
 # Visual Studio 2015/2017 cache/options directory
 .vs/
-# Uncomment if you have tasks that create the project's static files in wwwroot
-#wwwroot/
 
 # Visual Studio Code
 .vscode/*
@@ -61,9 +64,17 @@ ENV/
 *_debug*.txt
 build_*.txt
 debug_*.txt
-embedding_debug.txt
 
-# Cache and config files
+# Runtime-generated cache & data files
 *_cache.json
 settings.json
 launcher_config.json
+mod_state.json
+
+# Downloaded mod thumbnails (fetched at runtime from GameBanana)
+mod_thumbnails/
+
+# Temporary / test files
+api_test.json
+temp_*.json
+temp_*.txt
