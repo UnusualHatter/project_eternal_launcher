@@ -465,7 +465,7 @@
                                        HorizontalAlignment="Center" Margin="0,0,0,8"/>
                             <TextBlock Text="Drop VPK files, folders, or archives (.zip, .rar, .7z) below to install mods.&#x0a;Or place them directly in the TF2 custom folder." 
                                        Foreground="#555" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420" Margin="0,0,0,20"/>
-                            <Button Content="Open Custom Folder" Command="{Binding OpenModsFolderCommand}"
+                            <Button Content="Open Mods Folder" Command="{Binding OpenModsFolderCommand}"
                                     Background="#1F1F1F" Foreground="White" FontWeight="SemiBold" FontSize="13"
                                     Padding="20,10" BorderThickness="1" Cursor="Hand">
                                 <Button.Style>

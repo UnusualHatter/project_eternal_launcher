@@ -74,10 +74,10 @@ public class GameService
                 return false;
             }
 
-            var hl2Exe = Path.Combine(tf2Path, "hl2.exe");
-            if (!File.Exists(hl2Exe))
+            var tf2Exe = Path.Combine(tf2Path, "tf_win64.exe");
+            if (!File.Exists(tf2Exe))
             {
-                Logger.LogWarning($"O arquivo hl2.exe não foi encontrado em: {tf2Path}");
+                Logger.LogWarning($"O arquivo tf_win64.exe não foi encontrado em: {tf2Path}");
                 return false;
             }
 
@@ -95,7 +95,7 @@ public class GameService
     {
         try
         {
-            var processes = Process.GetProcessesByName("hl2");
+            var processes = Process.GetProcessesByName("tf_win64");
             var isRunning = processes.Length > 0;
 
             foreach (var proc in processes)

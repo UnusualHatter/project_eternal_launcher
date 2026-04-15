@@ -1,37 +1,44 @@
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using LauncherTF2.Core;
 
 namespace LauncherTF2.Services;
 
 /// <summary>
-/// Serviço de monitoramento de runtime para mods de otimização.
-///
-/// Importante: este serviço não realiza injeção remota de DLL em processos de terceiros.
-/// Ele apenas monitora o estado do jogo e valida a disponibilidade de uma DLL auxiliar local.
+/// Monitors the TF2 process lifecycle and injects pure_patcher.dll
+/// once the game reaches its main menu (window handle becomes available).
 /// </summary>
 public class InjectionService : IDisposable
 {
     private static InjectionService? _instance;
     public static InjectionService Instance => _instance ??= new InjectionService();
 
+    private const string TF2ProcessName = "tf_win64";
+
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _monitoringTask;
     private readonly string[] _dllCandidates;
     private string? _resolvedDllPath;
+    private bool _injectedThisSession;
     private bool _wasGameRunning;
     private bool _disposed;
+
+    // Seconds to wait after MainWindowHandle is detected before injecting,
+    // giving the engine time to finish loading shaders and assets
+    private const int PostWindowDelaySeconds = 8;
+    private const int PollIntervalMs = 2000;
 
     public InjectionService()
     {
         var basePath = AppDomain.CurrentDomain.BaseDirectory;
         _dllCandidates =
         [
-            Path.Combine(basePath, "Resources", "Injections", "pure_patcher.dll"),
-            Path.Combine(basePath, "Resources", "Injections", "casual_fix.dll"),
-            Path.Combine(basePath, "pure_patcher.dll"),
-            Path.Combine(basePath, "casual_fix.dll")
+            Path.Combine(basePath, "native", "pure_patcher.dll"),
+            Path.Combine(basePath, "pure_patcher.dll")
         ];
     }
 
@@ -48,6 +55,7 @@ public class InjectionService : IDisposable
 
         _cancellationTokenSource = new CancellationTokenSource();
         _wasGameRunning = false;
+        _injectedThisSession = false;
 
         _monitoringTask = Task.Run(() => MonitorLoop(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
         Logger.LogInfo("Runtime monitoring started");
@@ -59,38 +67,35 @@ public class InjectionService : IDisposable
             return;
 
         _cancellationTokenSource.Cancel();
-        
+
         try
         {
             _monitoringTask?.Wait(TimeSpan.FromSeconds(5));
         }
-        catch (OperationCanceledException)
+        catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
         {
-            // Expected
+            // Expected on cancellation
         }
 
         _cancellationTokenSource.Dispose();
         _cancellationTokenSource = null;
-
         Logger.LogInfo("Runtime monitoring stopped");
     }
 
-    private async Task MonitorLoop(CancellationToken cancellationToken)
+    private async Task MonitorLoop(CancellationToken ct)
     {
         Logger.LogDebug("Starting runtime monitoring loop");
 
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!ct.IsCancellationRequested)
             {
-                MonitorGameState();
-
-                await Task.Delay(2000, cancellationToken);
+                await MonitorGameState(ct);
+                await Task.Delay(PollIntervalMs, ct);
             }
         }
         catch (OperationCanceledException)
         {
-            // Expected when cancellation is requested
             Logger.LogInfo("Runtime monitoring loop cancelled");
         }
         catch (Exception ex)
@@ -100,51 +105,136 @@ public class InjectionService : IDisposable
     }
 
     /// <summary>
-    /// Detecta transições de estado do jogo (abriu/fechou) e registra contexto de runtime.
+    /// Tracks TF2 process state transitions and triggers injection
+    /// when the game window becomes available for the first time.
     /// </summary>
-    private void MonitorGameState()
+    private async Task MonitorGameState(CancellationToken ct)
     {
-        var isRunning = IsGameRunning();
+        var gameProcess = FindGameProcess();
+        var isRunning = gameProcess != null;
 
         if (isRunning && !_wasGameRunning)
         {
-            if (!string.IsNullOrWhiteSpace(_resolvedDllPath))
-            {
-                Logger.LogInfo($"hl2 detected. Optimization runtime available at: {_resolvedDllPath}");
-            }
-            else
-            {
-                Logger.LogWarning("hl2 detected, but no optimization runtime DLL was found.");
-            }
+            Logger.LogInfo($"{TF2ProcessName} process detected, waiting for main window...");
         }
 
+        // Game just closed — reset injection flag for next session
         if (!isRunning && _wasGameRunning)
         {
-            Logger.LogInfo("hl2 closed. Runtime session finalized.");
+            Logger.LogInfo($"{TF2ProcessName} closed. Runtime session finalized.");
+            _injectedThisSession = false;
         }
 
         _wasGameRunning = isRunning;
-    }
 
-    /// <summary>
-    /// Verifica se o processo do jogo está ativo e libera recursos dos objetos Process.
-    /// </summary>
-    private static bool IsGameRunning()
-    {
-        var processes = Process.GetProcessesByName("hl2");
-        var isRunning = processes.Length > 0;
-
-        foreach (var process in processes)
+        // Only attempt injection once per game session
+        if (gameProcess == null || _injectedThisSession)
         {
-            process.Dispose();
+            gameProcess?.Dispose();
+            return;
         }
 
-        return isRunning;
+        try
+        {
+            // Wait for the engine to create its main window (menu loaded)
+            if (!HasMainWindow(gameProcess))
+            {
+                return;
+            }
+
+            Logger.LogInfo($"Main window detected (handle: 0x{gameProcess.MainWindowHandle:X}). " +
+                           $"Waiting {PostWindowDelaySeconds}s for engine initialization...");
+
+            await Task.Delay(TimeSpan.FromSeconds(PostWindowDelaySeconds), ct);
+
+            // Re-check the process is still alive after the delay
+            gameProcess.Refresh();
+            if (gameProcess.HasExited)
+            {
+                Logger.LogWarning($"{TF2ProcessName} exited during post-window delay, skipping injection");
+                return;
+            }
+
+            await AttemptInjection(gameProcess);
+        }
+        finally
+        {
+            gameProcess.Dispose();
+        }
     }
 
     /// <summary>
-    /// Resolve a DLL auxiliar disponível no ambiente atual.
+    /// Calls NativeInjector to inject the resolved DLL into the target process.
     /// </summary>
+    private async Task AttemptInjection(Process target)
+    {
+        if (string.IsNullOrWhiteSpace(_resolvedDllPath))
+        {
+            Logger.LogWarning("No injection DLL found, skipping injection");
+            _injectedThisSession = true;
+            return;
+        }
+
+        var absoluteDllPath = Path.GetFullPath(_resolvedDllPath);
+        Logger.LogInfo($"Injecting {Path.GetFileName(absoluteDllPath)} into {TF2ProcessName} (PID: {target.Id})...");
+
+        try
+        {
+            int result = await NativeInjector.InjectAsync(target, absoluteDllPath);
+            string message = NativeInjector.TranslateReturnCode(result);
+
+            if (result == 0)
+            {
+                Logger.LogInfo($"Injection succeeded — {Path.GetFileName(absoluteDllPath)} loaded into {TF2ProcessName}");
+            }
+            else
+            {
+                Logger.LogError($"Injection failed: {message} (code: {result})");
+            }
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            Logger.LogError("Injection aborted: launcher is not running as x64", ex);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Unexpected error during injection", ex);
+        }
+
+        // Mark as injected regardless of outcome to avoid spam retries
+        _injectedThisSession = true;
+    }
+
+    private static Process? FindGameProcess()
+    {
+        var processes = Process.GetProcessesByName(TF2ProcessName);
+        if (processes.Length == 0)
+            return null;
+
+        var target = processes[0];
+        for (int i = 1; i < processes.Length; i++)
+            processes[i].Dispose();
+
+        return target;
+    }
+
+    /// <summary>
+    /// Checks whether the process has created its main window,
+    /// indicating the game has finished initial loading.
+    /// </summary>
+    private static bool HasMainWindow(Process process)
+    {
+        try
+        {
+            process.Refresh();
+            return process.MainWindowHandle != IntPtr.Zero;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private string? ResolveRuntimeDllPath()
     {
         foreach (var path in _dllCandidates)
@@ -152,24 +242,20 @@ public class InjectionService : IDisposable
             if (File.Exists(path))
                 return path;
         }
-
         return null;
     }
 
-    /// <summary>
-    /// Registra status da DLL auxiliar e hash SHA-256 para rastreabilidade.
-    /// </summary>
     private static void LogDllStatus(string? dllPath)
     {
         if (string.IsNullOrWhiteSpace(dllPath))
         {
-            Logger.LogWarning("No optimization runtime DLL found. Monitoring will continue without runtime binding.");
+            Logger.LogWarning("No injection DLL found. Monitoring will continue but injection will be skipped.");
             return;
         }
 
         var hash = ComputeSha256(dllPath);
-        Logger.LogInfo($"Runtime DLL found: {dllPath}");
-        Logger.LogDebug($"Runtime DLL SHA-256: {hash}");
+        Logger.LogInfo($"Injection DLL resolved: {dllPath}");
+        Logger.LogDebug($"DLL SHA-256: {hash}");
     }
 
     private static string ComputeSha256(string filePath)
@@ -187,7 +273,6 @@ public class InjectionService : IDisposable
 
         StopMonitoring();
         _disposed = true;
-
         GC.SuppressFinalize(this);
     }
 

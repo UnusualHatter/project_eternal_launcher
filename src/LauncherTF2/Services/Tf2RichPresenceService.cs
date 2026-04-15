@@ -181,7 +181,7 @@ public class Tf2RichPresenceService : IDisposable
                 {
                     try
                     {
-                        var tf2Proc = System.Diagnostics.Process.GetProcessesByName("hl2");
+                        var tf2Proc = System.Diagnostics.Process.GetProcessesByName("tf_win64");
                         if (tf2Proc.Length == 0 && IsRpcActive)
                         {
                             // Optionally stop or just idle?
