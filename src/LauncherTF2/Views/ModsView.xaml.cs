@@ -43,6 +43,24 @@ public partial class ModsView : UserControl
     }
 
     /// <summary>
+    /// Explicitly tells Windows we accept the dragged files.
+    /// Without this, WPF sometimes defaults to DragDropEffects.None (showing a 🚫 cursor).
+    /// </summary>
+    private void DropZone_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
     /// Reset visual when dragging leaves the drop zone.
     /// </summary>
     private void DropZone_DragLeave(object sender, DragEventArgs e)

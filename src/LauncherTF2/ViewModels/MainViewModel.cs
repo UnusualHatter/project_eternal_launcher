@@ -110,9 +110,7 @@ public class MainViewModel : ViewModelBase
         {
             // Ensure RPC service stops
             Tf2RichPresenceService.Instance.Stop();
-            
-            // Stop injection monitoring
-            InjectionService.Instance.Dispose();
+                // Injection functionality removed; nothing to dispose
             
             Logger.LogInfo("MainViewModel cleanup completed");
         }

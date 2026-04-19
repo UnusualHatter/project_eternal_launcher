@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using DiscordRPC;
 using DiscordRPC.Logging;
 using LauncherTF2.Core;
@@ -19,6 +20,7 @@ public class Tf2RichPresenceService : IDisposable
     private Task? _monitoringTask;
     private readonly object _lock = new();
     private bool _disposed;
+    private bool _purePatcherLaunchedInSession;
     
     // NOTE: Uses Kataiser's public Discord Application ID for compatibility/testing
     private const string ClientId = "800063852028657674";
@@ -176,28 +178,23 @@ public class Tf2RichPresenceService : IDisposable
                     Logger.LogDebug($"Log file not found: {logPath}");
                 }
 
-                // Check game running state if pause setting is on
-                if (PauseWhenGameCloses)
+                // Reset per-session flags when the game is not running
+                try
                 {
-                    try
+                    var tf2Proc = Process.GetProcessesByName("tf_win64");
+                    if (tf2Proc.Length == 0)
                     {
-                        var tf2Proc = System.Diagnostics.Process.GetProcessesByName("tf_win64");
-                        if (tf2Proc.Length == 0 && IsRpcActive)
-                        {
-                            // Optionally stop or just idle?
-                            // Original repo pauses updates. For now we just stay alive.
-                            Logger.LogDebug("Game not running, RPC still active");
-                        }
-                        
-                        foreach (var proc in tf2Proc)
-                        {
-                            proc.Dispose();
-                        }
+                        _purePatcherLaunchedInSession = false;
                     }
-                    catch (Exception ex)
+
+                    foreach (var proc in tf2Proc)
                     {
-                        Logger.LogDebug($"Error checking game process: {ex.Message}");
+                        proc.Dispose();
                     }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug($"Error checking game process: {ex.Message}");
                 }
 
                 await Task.Delay(1000, userToken);
@@ -244,6 +241,15 @@ public class Tf2RichPresenceService : IDisposable
                 QueueStatus = "Idle";
                 UpdatePresence("Main Menu", "Idle");
             }
+            else if (line.Contains("Connection to game coordinator established."))
+            {
+                // Trigger pure_patcher once per game session when GC connection is established
+                if (!_purePatcherLaunchedInSession)
+                {
+                    _purePatcherLaunchedInSession = true;
+                    Task.Run(() => TryLaunchPurePatcher());
+                }
+            }
             else if (line.Contains("TF_Matchmaking_Queue_Caption"))
             {
                 // "TF_Matchmaking_Queue_Caption" "Queued for Casual"
@@ -258,6 +264,42 @@ public class Tf2RichPresenceService : IDisposable
         catch (Exception ex)
         {
             Logger.LogError($"Error parsing log line: {line}", ex);
+        }
+    }
+
+    private void TryLaunchPurePatcher()
+    {
+        try
+        {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var purePatcher = Path.Combine(basePath, "native", "pure_patcher.exe");
+            if (!File.Exists(purePatcher))
+                purePatcher = Path.Combine(basePath, "pure_patcher.exe");
+
+            if (!File.Exists(purePatcher))
+            {
+                Logger.LogWarning($"pure_patcher.exe not found at expected locations: {purePatcher}");
+                return;
+            }
+
+            try
+            {
+                Logger.LogInfo($"Starting pure_patcher: {purePatcher}");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = purePatcher,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to start pure_patcher.exe", ex);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Unexpected error while launching pure_patcher", ex);
         }
     }
 

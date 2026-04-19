@@ -284,7 +284,7 @@ public class ModsViewModel : ViewModelBase
                 var capturedBitmap = bitmap;
                 var capturedAuthor = author;
                 var capturedEnriched = gotEnriched;
-                dispatcher.BeginInvoke(() =>
+                _ = dispatcher.BeginInvoke(() =>
                 {
                     mod.Author = capturedAuthor;
                     mod.IsEnriched = capturedEnriched;
@@ -419,17 +419,17 @@ public class ModsViewModel : ViewModelBase
 
             await Task.Run(() =>
             {
-                using var stream = File.OpenRead(archivePath);
-                using var reader = ReaderFactory.Open(stream);
-                while (reader.MoveToNextEntry())
+                using var archive = SharpCompress.Archives.ArchiveFactory.Open(archivePath);
+                foreach (var entry in archive.Entries)
                 {
-                    if (!reader.Entry.IsDirectory)
+                    if (!entry.IsDirectory && !string.IsNullOrEmpty(entry.Key))
                     {
-                        reader.WriteEntryToDirectory(tempDir, new ExtractionOptions
-                        {
-                            ExtractFullPath = true,
-                            Overwrite = true
-                        });
+                        var destPath = Path.Combine(tempDir, entry.Key);
+                        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                        
+                        using var entryStream = entry.OpenEntryStream();
+                        using var fileStream = System.IO.File.Create(destPath);
+                        entryStream.CopyTo(fileStream);
                     }
                 }
             });

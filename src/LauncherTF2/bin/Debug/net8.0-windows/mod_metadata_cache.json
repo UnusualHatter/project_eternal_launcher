@@ -1,0 +1,30 @@
+{
+  "backup": {
+    "Author": null,
+    "ThumbnailLocalPath": null,
+    "FetchedAt": "2026-04-18T16:13:55.7599704Z",
+    "IsNegative": true,
+    "IsExpired": false
+  },
+  "sound": {
+    "Author": null,
+    "ThumbnailLocalPath": null,
+    "FetchedAt": "2026-04-18T16:13:55.7675375Z",
+    "IsNegative": true,
+    "IsExpired": false
+  },
+  "amphuddx": {
+    "Author": null,
+    "ThumbnailLocalPath": null,
+    "FetchedAt": "2026-04-18T16:13:55.6883927Z",
+    "IsNegative": true,
+    "IsExpired": false
+  },
+  "birbmods": {
+    "Author": null,
+    "ThumbnailLocalPath": null,
+    "FetchedAt": "2026-04-18T16:13:55.3588771Z",
+    "IsNegative": true,
+    "IsExpired": false
+  }
+}

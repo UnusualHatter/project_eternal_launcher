@@ -29,7 +29,7 @@ public class GameBananaEnrichmentService
 
     // DuckDuckGo HTML search (no API key required)
     private const string DDGSearchUrl =
-        "https://html.duckduckgo.com/html/?q={0}+site%3Agamebanana.com";
+        "https://html.duckduckgo.com/html/?q={0}+%22Team+Fortress+2%22+site%3Agamebanana.com";
 
     // GameBanana API per-item endpoint
     private const string GBItemApiUrl =
@@ -238,9 +238,17 @@ public class GameBananaEnrichmentService
         if (a.Contains(b, StringComparison.OrdinalIgnoreCase)) return true;
         if (b.Contains(a, StringComparison.OrdinalIgnoreCase)) return true;
 
-        // Levenshtein similarity > 60 %
+        // Common word match (e.g. "ahud_v2" vs "TF2 ahud")
+        var wordsA = a.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var wordsB = b.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var wa in wordsA)
+        {
+            if (wa.Length >= 4 && wordsB.Any(wb => wb == wa)) return true;
+        }
+
+        // Levenshtein similarity > 40 %
         var sim = LevenshteinSimilarity(a, b);
-        return sim >= 0.60;
+        return sim >= 0.40;
     }
 
     private static string NormalizeForCompare(string s)

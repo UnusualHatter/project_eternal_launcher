@@ -152,8 +152,9 @@
                 </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="130"/>
-                        <RowDefinition Height="*"/>
+                        <!-- Imagem um pouquinho mais alta pra fechar o ratio perfeito para 5 colunas -->
+                        <RowDefinition Height="85"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- Thumbnail — uses pre-built BitmapImage when GB enrichment applied,
@@ -189,9 +190,9 @@
                     </Border>
 
                     <!-- Type Badge (top-right) -->
-                    <Border Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" 
-                            Background="#CC111111" CornerRadius="10" Padding="8,4">
-                        <TextBlock Text="{Binding TypeLabel}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                    <Border Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" 
+                            Background="#CC111111" CornerRadius="8" Padding="6,3">
+                        <TextBlock Text="{Binding TypeLabel}" Foreground="White" FontSize="9" FontWeight="Bold"/>
                     </Border>
 
                     <!-- GameBanana Badge (top-left, only when enriched) -->
@@ -207,12 +208,13 @@
                     </Border>
 
                     <!-- Content -->
-                    <StackPanel Grid.Row="1" Margin="14,12,14,14">
-                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="15" FontWeight="Bold" 
+                    <StackPanel Grid.Row="1" Margin="10,10,10,12">
+                        <!-- Fonte e espaçamentos reescalonados para blocos menores -->
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="13" FontWeight="Bold" 
                                    TextTrimming="CharacterEllipsis" Margin="0,0,0,3"/>
-                        <TextBlock Text="{Binding Author}" Foreground="#777" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding Description}" Foreground="#999" FontSize="11" TextWrapping="Wrap" 
-                                   MaxHeight="36" TextTrimming="CharacterEllipsis" Margin="0,0,0,10"/>
+                        <TextBlock Text="{Binding Author}" Foreground="#777" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding Description}" Foreground="#999" FontSize="10" TextWrapping="Wrap" 
+                                   MaxHeight="28" TextTrimming="CharacterEllipsis" Margin="0,0,0,10"/>
 
                         <!-- Bottom row: Size + Version / Actions -->
                         <Grid>
@@ -222,9 +224,9 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding SizeLabel}" Foreground="#666" FontSize="10"/>
-                                <TextBlock Text=" • " Foreground="#444" FontSize="10"/>
-                                <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding SizeLabel}" Foreground="#666" FontSize="9"/>
+                                <TextBlock Text=" • " Foreground="#444" FontSize="9"/>
+                                <TextBlock Text="{Binding Version}" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="SemiBold"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -435,10 +437,12 @@
                     <!-- Grid View -->
                     <ItemsControl ItemsSource="{Binding FilteredModsView}" 
                                   ItemTemplate="{StaticResource GridModTemplate}"
-                                  Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}">
+                                  Visibility="{Binding IsGridView, Converter={StaticResource BoolToVis}}"
+                                  VerticalAlignment="Top">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="3"/>
+                                <!-- Retornado de 6 para 5 para um balanceamento de blocos mais estético e adicionado alinhamento ao topo para não esticar verticalmente -->
+                                <UniformGrid Columns="5" VerticalAlignment="Top"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
@@ -544,7 +548,7 @@
 
             <!-- Drop Zone Content (shown when expanded) -->
             <Border Grid.Row="1" x:Name="DropZone" CornerRadius="12" MinHeight="110"
-                    AllowDrop="True" Drop="DropZone_Drop" DragEnter="DropZone_DragEnter" DragLeave="DropZone_DragLeave"
+                    AllowDrop="True" Drop="DropZone_Drop" DragEnter="DropZone_DragEnter" DragLeave="DropZone_DragLeave" DragOver="DropZone_DragOver"
                     Background="#0D0D0D" BorderThickness="2" BorderBrush="#222"
                     Visibility="{Binding IsDropPanelExpanded, Converter={StaticResource BoolToVis}}">
                 <Grid Margin="20,14">
