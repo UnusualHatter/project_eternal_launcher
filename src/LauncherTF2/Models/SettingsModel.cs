@@ -1,9 +1,24 @@
+using LauncherTF2.Core;
+using System.Collections.ObjectModel;
+
 namespace LauncherTF2.Models;
 
-public class SettingsModel : System.ComponentModel.INotifyPropertyChanged
+/// <summary>
+/// Default Steam TF2 directory used as fallback across the application.
+/// </summary>
+public static class GamePaths
 {
-    private string _steamPath = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf";
+    public const string DefaultTf2Path = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf";
+}
+
+public class SettingsModel : ViewModelBase
+{
+    private string _steamPath = GamePaths.DefaultTf2Path;
     private string _launchArgs = "+exec w/config.cfg +exec autoexec.cfg";
+    private string _steamApiKey = string.Empty;
+    private string _backpackTfApiKey = string.Empty;
+    private string _marketplaceTfApiKey = string.Empty;
+    private string _stnTradingApiKey = string.Empty;
 
     private bool _skipIntro;
     private bool _disableJoystick;
@@ -57,67 +72,65 @@ public class SettingsModel : System.ComponentModel.INotifyPropertyChanged
     private bool _disableEyes;
     private bool _disableFlex;
 
-    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    // Uses SetProperty from ViewModelBase — eliminates duplicated INPC boilerplate
+    public string SteamPath { get => _steamPath; set => SetProperty(ref _steamPath, value); }
+    public string LaunchArgs { get => _launchArgs; set => SetProperty(ref _launchArgs, value); }
+    public string SteamApiKey { get => _steamApiKey; set => SetProperty(ref _steamApiKey, value); }
+    public string BackpackTfApiKey { get => _backpackTfApiKey; set => SetProperty(ref _backpackTfApiKey, value); }
+    public string MarketplaceTfApiKey { get => _marketplaceTfApiKey; set => SetProperty(ref _marketplaceTfApiKey, value); }
+    public string StnTradingApiKey { get => _stnTradingApiKey; set => SetProperty(ref _stnTradingApiKey, value); }
 
-    protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
-    }
+    public bool SkipIntro { get => _skipIntro; set => SetProperty(ref _skipIntro, value); }
+    public bool DisableJoystick { get => _disableJoystick; set => SetProperty(ref _disableJoystick, value); }
+    public bool HighPriority { get => _highPriority; set => SetProperty(ref _highPriority, value); }
+    public int Threads { get => _threads; set => SetProperty(ref _threads, value); }
+    public int DxLevel { get => _dxLevel; set => SetProperty(ref _dxLevel, value); }
 
-    public string SteamPath { get => _steamPath; set { if (_steamPath != value) { _steamPath = value; OnPropertyChanged(); } } }
-    public string LaunchArgs { get => _launchArgs; set { if (_launchArgs != value) { _launchArgs = value; OnPropertyChanged(); } } }
+    public bool Fullscreen { get => _fullscreen; set => SetProperty(ref _fullscreen, value); }
+    public bool Windowed { get => _windowed; set => SetProperty(ref _windowed, value); }
+    public bool Borderless { get => _borderless; set => SetProperty(ref _borderless, value); }
+    public int Width { get => _width; set => SetProperty(ref _width, value); }
+    public int Height { get => _height; set => SetProperty(ref _height, value); }
+    public int RefreshRate { get => _refreshRate; set => SetProperty(ref _refreshRate, value); }
 
-    public bool SkipIntro { get => _skipIntro; set { if (_skipIntro != value) { _skipIntro = value; OnPropertyChanged(); } } }
-    public bool DisableJoystick { get => _disableJoystick; set { if (_disableJoystick != value) { _disableJoystick = value; OnPropertyChanged(); } } }
-    public bool HighPriority { get => _highPriority; set { if (_highPriority != value) { _highPriority = value; OnPropertyChanged(); } } }
-    public int Threads { get => _threads; set { if (_threads != value) { _threads = value; OnPropertyChanged(); } } }
-    public int DxLevel { get => _dxLevel; set { if (_dxLevel != value) { _dxLevel = value; OnPropertyChanged(); } } }
+    public bool DisableSound { get => _disableSound; set => SetProperty(ref _disableSound, value); }
+    public bool DisableHltv { get => _disableHltv; set => SetProperty(ref _disableHltv, value); }
+    public bool SoftParticlesOff { get => _softParticlesOff; set => SetProperty(ref _softParticlesOff, value); }
+    public bool DisableSteamController { get => _disableSteamController; set => SetProperty(ref _disableSteamController, value); }
 
-    public bool Fullscreen { get => _fullscreen; set { if (_fullscreen != value) { _fullscreen = value; OnPropertyChanged(); } } }
-    public bool Windowed { get => _windowed; set { if (_windowed != value) { _windowed = value; OnPropertyChanged(); } } }
-    public bool Borderless { get => _borderless; set { if (_borderless != value) { _borderless = value; OnPropertyChanged(); } } }
-    public int Width { get => _width; set { if (_width != value) { _width = value; OnPropertyChanged(); } } }
-    public int Height { get => _height; set { if (_height != value) { _height = value; OnPropertyChanged(); } } }
-    public int RefreshRate { get => _refreshRate; set { if (_refreshRate != value) { _refreshRate = value; OnPropertyChanged(); } } }
+    public bool VSync { get => _vSync; set => SetProperty(ref _vSync, value); }
+    public int AntiAliasing { get => _antiAliasing; set => SetProperty(ref _antiAliasing, value); }
+    public int AnisotropicFiltering { get => _anisotropicFiltering; set => SetProperty(ref _anisotropicFiltering, value); }
+    public bool Bloom { get => _bloom; set => SetProperty(ref _bloom, value); }
+    public double MotionBlurStrength { get => _motionBlurStrength; set => SetProperty(ref _motionBlurStrength, value); }
+    public int ModelLod { get => _modelLod; set => SetProperty(ref _modelLod, value); }
+    public bool Ragdolls { get => _ragdolls; set => SetProperty(ref _ragdolls, value); }
+    public bool AlienGibs { get => _alienGibs; set => SetProperty(ref _alienGibs, value); }
+    public bool HumanGibs { get => _humanGibs; set => SetProperty(ref _humanGibs, value); }
+    public int DetailDistance { get => _detailDistance; set => SetProperty(ref _detailDistance, value); }
 
-    public bool DisableSound { get => _disableSound; set { if (_disableSound != value) { _disableSound = value; OnPropertyChanged(); } } }
-    public bool DisableHltv { get => _disableHltv; set { if (_disableHltv != value) { _disableHltv = value; OnPropertyChanged(); } } }
-    public bool SoftParticlesOff { get => _softParticlesOff; set { if (_softParticlesOff != value) { _softParticlesOff = value; OnPropertyChanged(); } } }
-    public bool DisableSteamController { get => _disableSteamController; set { if (_disableSteamController != value) { _disableSteamController = value; OnPropertyChanged(); } } }
+    public int Fov { get => _fov; set => SetProperty(ref _fov, value); }
+    public int ViewmodelFov { get => _viewmodelFov; set => SetProperty(ref _viewmodelFov, value); }
+    public bool DrawViewmodel { get => _drawViewmodel; set => SetProperty(ref _drawViewmodel, value); }
+    public bool RawInput { get => _rawInput; set => SetProperty(ref _rawInput, value); }
+    public double MouseSensitivity { get => _mouseSensitivity; set => SetProperty(ref _mouseSensitivity, value); }
+    public bool AutoReload { get => _autoReload; set => SetProperty(ref _autoReload, value); }
+    public bool HitSound { get => _hitSound; set => SetProperty(ref _hitSound, value); }
+    public bool DamageNumbers { get => _damageNumbers; set => SetProperty(ref _damageNumbers, value); }
+    public double KillstreakGlow { get => _killstreakGlow; set => SetProperty(ref _killstreakGlow, value); }
 
-    public bool VSync { get => _vSync; set { if (_vSync != value) { _vSync = value; OnPropertyChanged(); } } }
-    public int AntiAliasing { get => _antiAliasing; set { if (_antiAliasing != value) { _antiAliasing = value; OnPropertyChanged(); } } }
-    public int AnisotropicFiltering { get => _anisotropicFiltering; set { if (_anisotropicFiltering != value) { _anisotropicFiltering = value; OnPropertyChanged(); } } }
-    public bool Bloom { get => _bloom; set { if (_bloom != value) { _bloom = value; OnPropertyChanged(); } } }
-    public double MotionBlurStrength { get => _motionBlurStrength; set { if (_motionBlurStrength != value) { _motionBlurStrength = value; OnPropertyChanged(); } } }
-    public int ModelLod { get => _modelLod; set { if (_modelLod != value) { _modelLod = value; OnPropertyChanged(); } } }
-    public bool Ragdolls { get => _ragdolls; set { if (_ragdolls != value) { _ragdolls = value; OnPropertyChanged(); } } }
-    public bool AlienGibs { get => _alienGibs; set { if (_alienGibs != value) { _alienGibs = value; OnPropertyChanged(); } } }
-    public bool HumanGibs { get => _humanGibs; set { if (_humanGibs != value) { _humanGibs = value; OnPropertyChanged(); } } }
-    public int DetailDistance { get => _detailDistance; set { if (_detailDistance != value) { _detailDistance = value; OnPropertyChanged(); } } }
+    public bool NetGraph { get => _netGraph; set => SetProperty(ref _netGraph, value); }
+    public double ChatMessageTime { get => _chatMessageTime; set => SetProperty(ref _chatMessageTime, value); }
+    public bool DrawHud { get => _drawHud; set => SetProperty(ref _drawHud, value); }
 
-    public int Fov { get => _fov; set { if (_fov != value) { _fov = value; OnPropertyChanged(); } } }
-    public int ViewmodelFov { get => _viewmodelFov; set { if (_viewmodelFov != value) { _viewmodelFov = value; OnPropertyChanged(); } } }
-    public bool DrawViewmodel { get => _drawViewmodel; set { if (_drawViewmodel != value) { _drawViewmodel = value; OnPropertyChanged(); } } }
-    public bool RawInput { get => _rawInput; set { if (_rawInput != value) { _rawInput = value; OnPropertyChanged(); } } }
-    public double MouseSensitivity { get => _mouseSensitivity; set { if (_mouseSensitivity != value) { _mouseSensitivity = value; OnPropertyChanged(); } } }
-    public bool AutoReload { get => _autoReload; set { if (_autoReload != value) { _autoReload = value; OnPropertyChanged(); } } }
-    public bool HitSound { get => _hitSound; set { if (_hitSound != value) { _hitSound = value; OnPropertyChanged(); } } }
-    public bool DamageNumbers { get => _damageNumbers; set { if (_damageNumbers != value) { _damageNumbers = value; OnPropertyChanged(); } } }
-    public double KillstreakGlow { get => _killstreakGlow; set { if (_killstreakGlow != value) { _killstreakGlow = value; OnPropertyChanged(); } } }
-
-    public bool NetGraph { get => _netGraph; set { if (_netGraph != value) { _netGraph = value; OnPropertyChanged(); } } }
-    public double ChatMessageTime { get => _chatMessageTime; set { if (_chatMessageTime != value) { _chatMessageTime = value; OnPropertyChanged(); } } }
-    public bool DrawHud { get => _drawHud; set { if (_drawHud != value) { _drawHud = value; OnPropertyChanged(); } } }
-
-    public double Interp { get => _interp; set { if (_interp != value) { _interp = value; OnPropertyChanged(); } } }
-    public bool Interpolate { get => _interpolate; set { if (_interpolate != value) { _interpolate = value; OnPropertyChanged(); } } }
-    public int Rate { get => _rate; set { if (_rate != value) { _rate = value; OnPropertyChanged(); } } }
-    public int CmdRate { get => _cmdRate; set { if (_cmdRate != value) { _cmdRate = value; OnPropertyChanged(); } } }
-    public int UpdateRate { get => _updateRate; set { if (_updateRate != value) { _updateRate = value; OnPropertyChanged(); } } }
-    public int QueueMode { get => _queueMode; set { if (_queueMode != value) { _queueMode = value; OnPropertyChanged(); } } }
-    public bool DisableEyes { get => _disableEyes; set { if (_disableEyes != value) { _disableEyes = value; OnPropertyChanged(); } } }
-    public bool DisableFlex { get => _disableFlex; set { if (_disableFlex != value) { _disableFlex = value; OnPropertyChanged(); } } }
+    public double Interp { get => _interp; set => SetProperty(ref _interp, value); }
+    public bool Interpolate { get => _interpolate; set => SetProperty(ref _interpolate, value); }
+    public int Rate { get => _rate; set => SetProperty(ref _rate, value); }
+    public int CmdRate { get => _cmdRate; set => SetProperty(ref _cmdRate, value); }
+    public int UpdateRate { get => _updateRate; set => SetProperty(ref _updateRate, value); }
+    public int QueueMode { get => _queueMode; set => SetProperty(ref _queueMode, value); }
+    public bool DisableEyes { get => _disableEyes; set => SetProperty(ref _disableEyes, value); }
+    public bool DisableFlex { get => _disableFlex; set => SetProperty(ref _disableFlex, value); }
 
     private bool _showBackpackRarities = true;
     private bool _showIngameNotifications = true;
@@ -129,27 +142,20 @@ public class SettingsModel : System.ComponentModel.INotifyPropertyChanged
     private bool _drawTracersFirstPerson = true;
     private bool _colorblindAssist;
 
-    public bool ShowBackpackRarities { get => _showBackpackRarities; set { if (_showBackpackRarities != value) { _showBackpackRarities = value; OnPropertyChanged(); } } }
-    public bool ShowIngameNotifications { get => _showIngameNotifications; set { if (_showIngameNotifications != value) { _showIngameNotifications = value; OnPropertyChanged(); } } }
-    public bool ShowPluginMessages { get => _showPluginMessages; set { if (_showPluginMessages != value) { _showPluginMessages = value; OnPropertyChanged(); } } }
-    public bool ShowHelp { get => _showHelp; set { if (_showHelp != value) { _showHelp = value; OnPropertyChanged(); } } }
-    public bool ScoreboardPingText { get => _scoreboardPingText; set { if (_scoreboardPingText != value) { _scoreboardPingText = value; OnPropertyChanged(); } } }
-    public int SpectatorMode { get => _spectatorMode; set { if (_spectatorMode != value) { _spectatorMode = value; OnPropertyChanged(); } } }
-    public bool NewImpactEffects { get => _newImpactEffects; set { if (_newImpactEffects != value) { _newImpactEffects = value; OnPropertyChanged(); } } }
-    public bool DrawTracersFirstPerson { get => _drawTracersFirstPerson; set { if (_drawTracersFirstPerson != value) { _drawTracersFirstPerson = value; OnPropertyChanged(); } } }
-    public bool ColorblindAssist { get => _colorblindAssist; set { if (_colorblindAssist != value) { _colorblindAssist = value; OnPropertyChanged(); } } }
+    public bool ShowBackpackRarities { get => _showBackpackRarities; set => SetProperty(ref _showBackpackRarities, value); }
+    public bool ShowIngameNotifications { get => _showIngameNotifications; set => SetProperty(ref _showIngameNotifications, value); }
+    public bool ShowPluginMessages { get => _showPluginMessages; set => SetProperty(ref _showPluginMessages, value); }
+    public bool ShowHelp { get => _showHelp; set => SetProperty(ref _showHelp, value); }
+    public bool ScoreboardPingText { get => _scoreboardPingText; set => SetProperty(ref _scoreboardPingText, value); }
+    public int SpectatorMode { get => _spectatorMode; set => SetProperty(ref _spectatorMode, value); }
+    public bool NewImpactEffects { get => _newImpactEffects; set => SetProperty(ref _newImpactEffects, value); }
+    public bool DrawTracersFirstPerson { get => _drawTracersFirstPerson; set => SetProperty(ref _drawTracersFirstPerson, value); }
+    public bool ColorblindAssist { get => _colorblindAssist; set => SetProperty(ref _colorblindAssist, value); }
 
-    private System.Collections.ObjectModel.ObservableCollection<BindModel> _binds = new();
-    public System.Collections.ObjectModel.ObservableCollection<BindModel> Binds
+    private ObservableCollection<BindModel> _binds = new();
+    public ObservableCollection<BindModel> Binds
     {
         get => _binds;
-        set
-        {
-            if (_binds != value)
-            {
-                _binds = value;
-                OnPropertyChanged();
-            }
-        }
+        set => SetProperty(ref _binds, value);
     }
 }

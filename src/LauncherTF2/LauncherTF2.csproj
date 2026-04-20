@@ -13,8 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="SharpCompress" Version="0.36.0" />
   </ItemGroup>
@@ -31,13 +31,6 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="ViewModels\" />
-    <Folder Include="Views\" />
-    <Folder Include="Services\" />
-    <Folder Include="Core\" />
-  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="..\..\resources\Assets\**\*.png" LinkBase="Resources\Assets" />

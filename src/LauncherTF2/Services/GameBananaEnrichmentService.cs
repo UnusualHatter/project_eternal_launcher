@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace LauncherTF2.Services;
 
+
 /// <summary>
 /// Enriches local mod metadata using a two-step lookup:
 ///
@@ -62,6 +63,8 @@ public class GameBananaEnrichmentService
     private readonly string _metadataCachePath;
     private readonly object _saveLock = new();
     private ConcurrentDictionary<string, CachedEntry> _cache;
+    private Timer? _debounceSaveTimer;
+    private const int SaveDebounceMs = 5000;
 
     public GameBananaEnrichmentService()
     {
@@ -93,7 +96,7 @@ public class GameBananaEnrichmentService
 
             if (candidates.Count == 0)
             {
-                Logger.LogInfo($"GB enrichment: no DDG results for '{mod.Name}'");
+                Logger.LogInfo($"[Enrichment] No DDG results for '{mod.Name}'");
                 StoreNegative(key);
                 return;
             }
@@ -116,19 +119,19 @@ public class GameBananaEnrichmentService
                 };
 
                 _cache[key] = entry;
-                SaveCache();
+                ScheduleCacheSave();
                 ApplyEntry(mod, entry);
 
-                Logger.LogInfo($"GB enrichment: matched '{mod.Name}' → '{result.GbName}' by {result.Author}");
+                Logger.LogInfo($"[Enrichment] Matched '{mod.Name}' → '{result.GbName}' by {result.Author}");
                 return;
             }
 
-            Logger.LogInfo($"GB enrichment: no TF2 match for '{mod.Name}' (checked {candidates.Count} candidates)");
+            Logger.LogInfo($"[Enrichment] No TF2 match for '{mod.Name}' ({candidates.Count} candidates checked)");
             StoreNegative(key);
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"GB enrichment failed for '{mod.Name}': {ex.Message}");
+            Logger.LogWarning($"[Enrichment] Failed for '{mod.Name}': {ex.Message}");
         }
     }
 
@@ -172,7 +175,8 @@ public class GameBananaEnrichmentService
             var modelName = SectionToModelName(section);
             var url = string.Format(GBItemApiUrl, modelName, id);
             var json = await _http.GetStringAsync(url);
-            var root = JsonDocument.Parse(json).RootElement;
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
             // ── Must be TF2 ──────────────────────────────────────────────
             if (!root.TryGetProperty("_aGame", out var game)) return null;
@@ -183,7 +187,7 @@ public class GameBananaEnrichmentService
             var gbName = root.TryGetProperty("_sName", out var n) ? n.GetString() ?? "" : "";
             if (!AreNamesSimilar(localName, gbName))
             {
-                Logger.LogInfo($"  GB: skipping '{gbName}' (name mismatch for '{localName}')");
+                Logger.LogInfo($"  [Enrichment] Skipping '{gbName}' — name mismatch for '{localName}'");
                 return null;
             }
 
@@ -329,7 +333,7 @@ public class GameBananaEnrichmentService
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"Thumbnail download failed ({imageUrl}): {ex.Message}");
+            Logger.LogWarning($"[Enrichment] Thumbnail download failed ({imageUrl}): {ex.Message}");
             return null;
         }
     }
@@ -337,7 +341,17 @@ public class GameBananaEnrichmentService
     private void StoreNegative(string key)
     {
         _cache[key] = CachedEntry.Negative();
-        SaveCache();
+        ScheduleCacheSave();
+    }
+
+    /// <summary>
+    /// Debounces cache saves so we don't write the full JSON file after every single mod.
+    /// Flushes 5 seconds after the last change.
+    /// </summary>
+    private void ScheduleCacheSave()
+    {
+        _debounceSaveTimer?.Dispose();
+        _debounceSaveTimer = new Timer(_ => SaveCache(), null, SaveDebounceMs, Timeout.Infinite);
     }
 
     private static string NormalizeKey(string name)
@@ -364,7 +378,7 @@ public class GameBananaEnrichmentService
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"Failed to load enrichment cache: {ex.Message}");
+            Logger.LogWarning($"[Enrichment] Failed to load cache: {ex.Message}");
         }
         return new ConcurrentDictionary<string, CachedEntry>();
     }
@@ -384,7 +398,7 @@ public class GameBananaEnrichmentService
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"Failed to save enrichment cache: {ex.Message}");
+            Logger.LogWarning($"[Enrichment] Failed to save cache: {ex.Message}");
         }
     }
 

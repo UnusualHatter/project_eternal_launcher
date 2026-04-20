@@ -1,0 +1,221 @@
+﻿TF2 Launcher — Multi-Store Pricing
+Architecture & Implementation Handoff for GitHub Copilot
+1. Project Context
+You are working on Project Eternal Launcher, a WPF/.NET 8 desktop app. The Inventory tab lists Steam backpack items and shows per-store prices in a selected-item panel. The goal is to implement a production-grade multi-store pricing system.
+Files you will touch:
+src/LauncherTF2/ViewModels/InventoryViewModel.cs
+src/LauncherTF2/Services/InventoryPricingService.cs
+src/LauncherTF2/Views/InventoryView.xaml
+New backend project: PricingAggregator/ (ASP.NET Core)
+2. The Problem
+Direct HTTP calls from the WPF client to marketplace APIs are blocked by WAF / anti-bot protection (Cloudflare). The table below summarises what was already tested:
+3. Chosen Solution: Backend Aggregator
+Create a small ASP.NET Core backend that acts as a proxy. The WPF launcher calls only this backend. The backend holds any API keys, handles retries, and caches results. The client never talks to marketplaces directly.
+Why this is the only viable option:
+Avoids exposing API keys in the desktop binary
+Backend IP is not flagged by WAF the way desktop HttpClient user-agents are
+Centralises cache, retry logic, and observability
+Easy to add new stores without shipping a new launcher version
+4. Data Model
+StorePrice record (one per marketplace)
+public record StorePrice(
+string   StoreName,   // e.g. "prices.tf", "Steam Market"
+PriceStatus Status,   // Live | Approx | Unavailable
+decimal? PriceUsd,
+decimal? PriceKeys,
+string   ListingUrl,  // used by the Open button
+string   Source,      // "api" | "fallback" | "timeout"
+DateTimeOffset UpdatedAt
+);
+public enum PriceStatus { Live, Approx, Unavailable }
+ItemPriceResult record (full API response)
+public record ItemPriceResult(
+string ItemName,
+string? Sku,
+IReadOnlyList<StorePrice> Prices,
+DateTimeOffset ResolvedAt
+);
+5. Backend — PricingAggregator
+5.1 Folder Structure
+PricingAggregator/
+Controllers/PricesController.cs
+Services/
+IPricingSource.cs
+PricingAggregatorService.cs
+Sources/
+PricesTfSource.cs      <-- primary, free, no key needed
+SteamMarketSource.cs   <-- universal fallback
+BackpackTfSource.cs    <-- best for keys/ref, needs free API key
+Models/ItemPriceResult.cs
+appsettings.json
+5.2 IPricingSource Interface
+public interface IPricingSource
+{
+string StoreName { get; }
+Task<StorePrice> GetPriceAsync(string itemName, string? sku, CancellationToken ct);
+}
+5.3 PricesTfSource (primary — no API key required)
+Endpoint: https://api2.prices.tf/prices/{sku}  — Returns sell/buy price in cents. Status 200 = Live. Anything else = Unavailable.
+public class PricesTfSource : IPricingSource
+{
+public string StoreName => "prices.tf";
+private readonly HttpClient _http;
+public PricesTfSource(HttpClient http) => _http = http;
+public async Task<StorePrice> GetPriceAsync(string itemName, string? sku, CancellationToken ct)
+{
+if (sku is null) return Unavailable(itemName);
+try {
+var url = $"https://api2.prices.tf/prices/{Uri.EscapeDataString(sku)}";
+var resp = await _http.GetAsync(url, ct);
+if (!resp.IsSuccessStatusCode) return Unavailable(itemName);
+var json = await resp.Content.ReadFromJsonAsync<PricesTfResponse>(ct: ct);
+if (json is null) return Unavailable(itemName);
+var usd = json.SellPrice / 100m;
+return new StorePrice(StoreName, PriceStatus.Live, usd, null,
+$"https://prices.tf/items/{Uri.EscapeDataString(sku)}", "api", DateTimeOffset.UtcNow);
+}
+catch { return Unavailable(itemName); }
+}
+private StorePrice Unavailable(string name) =>
+new(StoreName, PriceStatus.Unavailable, null, null,
+"https://prices.tf", "api", DateTimeOffset.UtcNow);
+private record PricesTfResponse(int SellPrice, int BuyPrice);
+}
+5.4 SteamMarketSource (fallback — always returns something for tradeable items)
+Endpoint: steamcommunity.com/market/priceoverview/?appid=440&currency=1&market_hash_name={name}
+Mark returned price as PriceStatus.Approx because it reflects Steam market, not third-party store.
+public class SteamMarketSource : IPricingSource
+{
+public string StoreName => "Steam Market";
+private readonly HttpClient _http;
+public SteamMarketSource(HttpClient http) => _http = http;
+public async Task<StorePrice> GetPriceAsync(string itemName, string? sku, CancellationToken ct)
+{
+try {
+var encoded = Uri.EscapeDataString(itemName);
+var url = $"https://steamcommunity.com/market/priceoverview/"
++ $"?appid=440&currency=1&market_hash_name={encoded}";
+var resp = await _http.GetAsync(url, ct);
+if (!resp.IsSuccessStatusCode) return Unavailable(itemName);
+var json = await resp.Content.ReadFromJsonAsync<SteamPriceResponse>(ct: ct);
+if (json?.success != true || json.lowest_price is null)
+return Unavailable(itemName);
+var price = decimal.Parse(
+json.lowest_price.Replace("$", "").Replace(",", "."),
+System.Globalization.CultureInfo.InvariantCulture);
+return new StorePrice(StoreName, PriceStatus.Approx, price, null,
+$"https://steamcommunity.com/market/listings/440/{encoded}",
+"fallback", DateTimeOffset.UtcNow);
+}
+catch { return Unavailable(itemName); }
+}
+private StorePrice Unavailable(string name) =>
+new(StoreName, PriceStatus.Unavailable, null, null,
+$"https://steamcommunity.com/market/listings/440/{Uri.EscapeDataString(name)}",
+"fallback", DateTimeOffset.UtcNow);
+private record SteamPriceResponse(bool success, string? lowest_price);
+}
+5.5 PricingAggregatorService (fan-out + cache)
+Calls all registered IPricingSource implementations in parallel. Each source has a hard 5-second timeout. Results are cached for 15 minutes by item key.
+public class PricingAggregatorService
+{
+private readonly IEnumerable<IPricingSource> _sources;
+private readonly IMemoryCache _cache;
+private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
+public PricingAggregatorService(IEnumerable<IPricingSource> sources, IMemoryCache cache)
+{ _sources = sources; _cache = cache; }
+public async Task<ItemPriceResult> GetPricesAsync(
+string itemName, string? sku, CancellationToken ct = default)
+{
+var cacheKey = $"price:{sku ?? itemName}";
+if (_cache.TryGetValue(cacheKey, out ItemPriceResult? cached)) return cached!;
+var tasks = _sources.Select(async source =>
+{
+using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+cts.CancelAfter(TimeSpan.FromSeconds(5));
+try { return await source.GetPriceAsync(itemName, sku, cts.Token); }
+catch { return new StorePrice(source.StoreName, PriceStatus.Unavailable,
+null, null, "#", "timeout", DateTimeOffset.UtcNow); }
+});
+var prices = await Task.WhenAll(tasks);
+var result = new ItemPriceResult(itemName, sku, prices, DateTimeOffset.UtcNow);
+_cache.Set(cacheKey, result, CacheTtl);
+return result;
+}
+}
+5.6 PricesController
+[ApiController]
+[Route("api/[controller]")]
+public class PricesController : ControllerBase
+{
+private readonly PricingAggregatorService _aggregator;
+public PricesController(PricingAggregatorService agg) => _aggregator = agg;
+// GET /api/prices?item=Scrap%20Metal&sku=5000;6
+[HttpGet]
+public async Task<IActionResult> Get(
+[FromQuery] string item, [FromQuery] string? sku, CancellationToken ct)
+{
+if (string.IsNullOrWhiteSpace(item)) return BadRequest("item is required");
+var result = await _aggregator.GetPricesAsync(item, sku, ct);
+return Ok(result);
+}
+}
+5.7 Program.cs — DI Registration
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<PricesTfSource>();
+builder.Services.AddHttpClient<SteamMarketSource>();
+builder.Services.AddScoped<IPricingSource, PricesTfSource>();
+builder.Services.AddScoped<IPricingSource, SteamMarketSource>();
+builder.Services.AddScoped<PricingAggregatorService>();
+6. Launcher Client — InventoryPricingService.cs
+Replace the existing implementation with a simple HTTP call to the backend aggregator. All retry/fallback logic lives in the backend, not here.
+public class InventoryPricingService
+{
+private readonly HttpClient _http;
+// Set this to your backend URL (env var or config)
+private const string AggregatorBase = "https://your-backend/api/prices";
+public InventoryPricingService(HttpClient http) => _http = http;
+public async Task<ItemPriceResult?> GetPricesAsync(
+string itemName, string? sku = null, CancellationToken ct = default)
+{
+try {
+var url = $"{AggregatorBase}?item={Uri.EscapeDataString(itemName)}"
++ (sku != null ? $"&sku={Uri.EscapeDataString(sku)}" : "");
+return await _http.GetFromJsonAsync<ItemPriceResult>(url, ct);
+}
+catch { return null; } // InventoryViewModel handles null gracefully
+}
+}
+7. InventoryViewModel — Loading Pattern
+Call GetPricesAsync when an item is selected. Use an async fire-and-forget pattern so the UI never freezes. Bind a StorePrices ObservableCollection to the panel.
+// In InventoryViewModel.cs
+private async void LoadPricesForItem(InventoryItem item)
+{
+IsLoadingPrices = true;
+StorePrices.Clear();
+var result = await _pricingService.GetPricesAsync(item.MarketHashName, item.Sku);
+if (result is not null)
+foreach (var price in result.Prices)
+StorePrices.Add(price);
+IsLoadingPrices = false;
+}
+Bind IsLoadingPrices to a spinner/overlay in InventoryView.xaml. StorePrices feeds the per-store price cards. Each card shows Status, PriceUsd (or PriceKeys), and an Open button bound to ListingUrl.
+8. Incremental Rollout Plan
+Follow these phases in order. Each phase is independently deployable.
+9. Security Rules
+Never hardcode API keys in the launcher binary or repository
+Store BACKPACKTF_API_KEY as an environment variable in the backend host
+The launcher should read the aggregator URL from config (not hardcoded)
+Respect robots.txt and ToS of each marketplace
+Do not scrape HTML — only consume documented JSON APIs
+10. Suggested Copilot Prompts
+Use these prompts in sequence inside the relevant files:
+In PricesTfSource.cs:
+"Implement GetPriceAsync using HttpClient. Call https://api2.prices.tf/prices/{sku}. Parse SellPrice (int, cents). Return StorePrice with PriceStatus.Live on success, PriceStatus.Unavailable on any failure."
+In SteamMarketSource.cs:
+"Implement GetPriceAsync using HttpClient. Call steamcommunity.com/market/priceoverview with appid=440, currency=1. Parse lowest_price string to decimal. Return PriceStatus.Approx."
+In PricingAggregatorService.cs:
+"Fan out to all IPricingSource with Task.WhenAll. Add 5-second per-source CancellationToken. Cache result in IMemoryCache for 15 minutes keyed by sku ?? itemName."
+In InventoryViewModel.cs:
+"Add async LoadPricesForItem(InventoryItem item). Set IsLoadingPrices = true, clear StorePrices ObservableCollection, call _pricingService.GetPricesAsync, populate StorePrices, set IsLoadingPrices = false."
+Project Eternal Launcher — Pricing Handoff  |  Generated for GitHub Copilot

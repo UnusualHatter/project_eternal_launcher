@@ -1,163 +1,76 @@
-# Project Eternal: TF2 Launcher
+# Project Eternal — TF2 Launcher
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![.NET](https://img.shields.io/badge/.NET-8.0-purple)
+A desktop launcher for Team Fortress 2 that handles the stuff Steam doesn't.
 
-A modern, professional launcher for Team Fortress 2, designed to enhance your gaming experience with advanced configuration options, mod management, Discord Rich Presence integration, and a sleek, customizable interface.
+Launch TF2 the way you actually want to — with your settings, your mods, and a live view of your inventory prices pulled from multiple stores at once.
 
-## ✨ Features
+---
 
-### Core Functionality
-- **Modern UI**: Sleek, dark-themed tabbed interface with smooth animations and custom styling
-- **System Tray Integration**: Minimize to system tray for background operation with custom launcher icon
-- **Single Instance Prevention**: Automatically prevents multiple instances from running simultaneously
-- **Auto-launch Integration**: Seamlessly launches TF2 with your configured settings
+## What it does
 
-### Mod Management
-- **Integrated Mod Library**: Browse and manage your installed mods with grid and list view options
-- **Visual Mod Cards**: Each mod displays with thumbnail, version, author, and description
-- **Toggle Activation**: Enable/disable mods with a single click
-- **Mod Filtering**: Filter mods by status (All, Enabled, Disabled)
-- **Search Functionality**: Quickly find mods by name
+Three things, kept separate so they don't get in each other's way:
 
-### Discord Rich Presence
-- **Custom RPC Integration**: Display your in-game status on Discord
-- **Automatic Detection**: Detects when TF2 is running and updates presence accordingly
-- **Configurable Settings**: Auto-start RPC with launcher or when game is detected
-- **Queue Status**: Shows your matchmaking queue status
+**Launch & settings** — Orchestrates TF2 through Steam (including the native patcher flow), persists your settings across sessions, and auto-generates your `autoexec.cfg`. Single-instance with tray support, so it stays out of your way when you don't need it.
 
-### Advanced Configuration
-- **Launch Options**: Configure all TF2 launch arguments through a visual interface
-  - System & Priority (skip intro, disable joystick, CPU priority, threads, DirectX level)
-  - Window & Display (fullscreen, windowed, borderless, resolution, refresh rate)
-  - Advanced Flags (disable sound, HLTV, soft particles, steam controller)
-- **Autoexec Editor**: Edit your `autoexec.cfg` with organized sections
-  - Graphics & Performance (VSync, anti-aliasing, anisotropic filtering, bloom, motion blur, LOD)
-  - Gameplay (FOV, viewmodel FOV, sensitivity, auto reload, hit sounds, damage numbers)
-  - Interface (net graph, chat time, HUD, competitive settings)
-  - Extras (backpack rarities, notifications, ping display, tracers, colorblind assist)
-- **Custom Binds**: Create and manage custom key bindings with an intuitive interface
-- **Real-time Sync**: Changes are synchronized with your configuration files automatically
+**Mod management** — Scans your local mod library, lets you enable/disable/install mods without touching the game folder by hand.
 
-### Launcher Configuration
-- **Logging Options**: 
-  - Enable/disable debug logging
-  - Configure log level (Debug, Info, Warning, Error)
-  - Auto-clear logs on startup
-- **Behavior Settings**:
-  - Minimize to tray on launch
-  - Close to tray instead of exiting
-  - Toggle notifications
+**Inventory** — Pulls per-item pricing from multiple stores and shows them side by side, with filtering and sorting. Direct desktop-to-marketplace calls tend to get throttled by anti-bot layers, so a small local backend handles that instead (more on that below).
 
-### Inventory System
-- **Item Browser**: View your TF2 inventory with pricing information
-- **Price Cache**: Automatic price caching for faster loading
+---
 
-### News & Blog
-- **Integrated Blog**: View latest TF2 news and updates within the launcher
+## Getting started
 
-## 📸 Screenshots
+**You'll need:** Windows 10/11, .NET 8 SDK, and TF2 installed via Steam.
 
-![Home Tab](resources/Assets/backrnd1.png)
-![Settings Tab](resources/Assets/backrnd2.png)
-![Mods Tab](resources/Assets/backrnd3.png)
-![Inventory Tab](resources/Assets/backrnd4.png)
+```powershell
+git clone ...
+./scripts/build.ps1       # builds everything
+scripts\start.bat         # starts the aggregator + launcher together
+```
 
-## 🚀 Getting Started
+If you only want the launcher without the pricing backend:
 
-### Prerequisites
+```bat
+scripts\run.bat
+```
 
-- **Windows 10/11**
-- **.NET 8.0 Desktop Runtime**: [Download here](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-- **Team Fortress 2** installed via Steam
-- **Visual Studio 2022** (for development)
+---
 
-### Installation
+## The pricing aggregator
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/project_eternal_launcher.git
-   ```
-2. Navigate to the project root
-3. Build the project:
-   ```powershell
-   ./scripts/build.ps1
-   ```
-   Or manually:
-   ```bash
-   dotnet build src/LauncherTF2/LauncherTF2.csproj
-   ```
+The inventory tab talks to a local ASP.NET Core backend (`PricingAggregator`) rather than hitting marketplace APIs directly. The reason is practical: marketplace endpoints often block or throttle direct desktop requests. The aggregator centralizes those calls, caches results, adds timeout handling, and hands back a consistent response shape.
 
-### Configuration
+Default endpoint: `http://localhost:5204/api/prices`
 
-1. Launch the application using:
-   ```bat
-   scripts\run.bat
-   ```
-   Or open `src/LauncherTF2.sln` in Visual Studio and press **F5**
-2. On first launch, set your TF2 installation path (the `tf` folder)
-3. Configure your preferred settings in the Settings tab
-4. Launch TF2 using the "LAUNCH TF2" button
+> The startup script sets `TF2_PRICING_AGGREGATOR_URL` automatically before launching the app.
 
-### Development
+---
 
-For development purposes:
-- Open `src/LauncherTF2.sln` in Visual Studio 2022
-- The solution uses .NET 8.0 WPF
-- Debug logs are written to `bin/Debug/net8.0-windows/app_debug.log`
-- Launcher settings are stored in `launcher_config.json`
-- Game settings are stored in `settings.json`
-
-## 🏗️ Project Structure
+## Project layout
 
 ```
 project_eternal_launcher/
-├── src/LauncherTF2/          # Main application
-│   ├── Core/                 # Core utilities (Logger, ViewModelBase, etc.)
-│   ├── Models/               # Data models (Settings, Mods, Items, etc.)
-│   ├── Services/             # Business logic (GameService, ModManager, etc.)
-│   ├── ViewModels/          # MVVM ViewModels
-│   ├── Views/                # WPF Views (XAML)
-│   └── Resources/            # Embedded resources
-├── resources/Assets/         # Images and assets
-├── scripts/                  # Build and run scripts
-└── docs/                     # Documentation
+├─ src/LauncherTF2/        WPF launcher (.NET 8)
+├─ PricingAggregator/      local pricing API (.NET 8)
+├─ scripts/                build, run, and start helpers
+├─ resources/Assets/       launcher images
+├─ cfg/                    reference game config files
+└─ docs/                   implementation notes and handoffs
 ```
 
-## 🔧 Key Technologies
+Build command: `dotnet build project_eternal_launcher-main.sln -c Debug`
 
-- **.NET 8.0**: Modern, high-performance framework
-- **WPF**: Windows Presentation Foundation for the UI
-- **MVVM Pattern**: Model-View-ViewModel architecture
-- **Hardcodet.NotifyIcon.Wpf**: System tray integration
-- **DiscordRPC**: Discord Rich Presence
-- **Newtonsoft.Json**: JSON serialization
+> Native patcher binaries are intentionally versioned under `src/LauncherTF2/native/` — don't move them.
 
-## 🤝 Contributing
+---
 
-Contributions are welcome! Please follow these steps:
+## Screenshots
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+![Home](resources/Assets/backrnd1.png)
+![Settings](resources/Assets/backrnd2.png)
+![Mods](resources/Assets/backrnd3.png)
+![Inventory](resources/Assets/backrnd4.png)
 
-### Code Style
+---
 
-- Follow existing code style and conventions
-- Use meaningful variable and function names
-- Add XML documentation for public APIs
-- Test your changes thoroughly
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-## 🙏 Acknowledgments
-
-- **Cukei** for the Casual Preloader integration
-- **Valve** for Team Fortress 2
-- **Discord** for Rich Presence API
+MIT — see `LICENSE`.

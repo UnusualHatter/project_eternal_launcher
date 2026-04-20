@@ -1,0 +1,33 @@
+# Build outputs
+**/bin/
+**/obj/
+
+# Visual Studio / IDE
+.vs/
+*.user
+*.suo
+
+# VS Code local settings (keep shared task/launch files)
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Runtime data and local caches generated while using the launcher
+**/*.exe.WebView2/
+**/app_debug.log
+**/crash_log.txt
+**/tf2_inventory_cache.json
+**/mod_metadata_cache.json
+**/mod_state.json
+**/launcher_config.json
+**/settings.json
+**/mod_thumbnails/
+
+# Local scratch files
+src/LauncherTF2/temp.json
+
+# OS files
+Thumbs.db
+.DS_Store
+

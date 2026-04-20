@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using LauncherTF2.Core;
 using LauncherTF2.ViewModels;
 
 namespace LauncherTF2.Views;
@@ -17,16 +18,23 @@ public partial class ModsView : UserControl
     /// </summary>
     private async void DropZone_Drop(object sender, DragEventArgs e)
     {
-        ResetDropVisual();
-
-        if (e.Data.GetDataPresent(DataFormats.FileDrop) &&
-            DataContext is ModsViewModel viewModel)
+        try
         {
-            var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (paths != null && paths.Length > 0)
+            ResetDropVisual();
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) &&
+                DataContext is ModsViewModel viewModel)
             {
-                await viewModel.HandleDropAsync(paths);
+                var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (paths != null && paths.Length > 0)
+                {
+                    await viewModel.HandleDropAsync(paths);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Unhandled error while processing mod drop event", ex);
         }
     }
 

@@ -1,8 +1,0 @@
-{
-  "EnableDebugLog": true,
-  "LogLevel": "Debug",
-  "AutoClearLogs": false,
-  "MinimizeToTrayOnLaunch": true,
-  "CloseToTray": true,
-  "ShowNotifications": true
-}

@@ -16,7 +16,7 @@ public class SteamDetectionService
             if (key != null)
             {
                 var activeUserValue = key.GetValue("ActiveUser");
-                if (activeUserValue is int accountId && accountId != 0)
+                if (TryParseAccountId(activeUserValue, out var accountId) && accountId > 0)
                 {
                     long steamId64 = SteamId64Base + accountId;
                     Logger.LogInfo($"Detected active SteamID: {steamId64}");
@@ -39,6 +39,23 @@ public class SteamDetectionService
 
         Logger.LogDebug("Could not detect active SteamID");
         return null;
+    }
+
+    private static bool TryParseAccountId(object? activeUserValue, out long accountId)
+    {
+        accountId = 0;
+
+        if (activeUserValue == null)
+            return false;
+
+        return activeUserValue switch
+        {
+            int value => (accountId = value) >= 0,
+            long value => (accountId = value) >= 0,
+            uint value => (accountId = value) >= 0,
+            string text when long.TryParse(text, out var parsed) => (accountId = parsed) >= 0,
+            _ => false
+        };
     }
 
     public string? GetSteamInstallPath()

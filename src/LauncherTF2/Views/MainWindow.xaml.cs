@@ -2,10 +2,15 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System;
+using System.ComponentModel;
 using System.IO;
 
 namespace LauncherTF2.Views;
 
+/// <summary>
+/// Main application window — manages the custom title bar, system tray icon,
+/// and content transition animations between tabs.
+/// </summary>
 public partial class MainWindow : Window
 {
     private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon? _trayIcon;
@@ -13,15 +18,14 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        // Carrega o XAML manualmente para evitar dependência dos campos gerados pelo designer.
         Application.LoadComponent(this, new Uri("/LauncherTF2;component/Views/MainWindow.xaml", UriKind.Relative));
 
         _trayIcon = FindName("TrayIcon") as Hardcodet.Wpf.TaskbarNotification.TaskbarIcon;
         _mainContentControl = FindName("MainContentControl") as System.Windows.Controls.ContentControl;
 
+        // Extract the app icon from the executable for tray display
         try
         {
-            // Usa o ícone associado ao executável para garantir compatibilidade com NotifyIcon.
             var assembly = System.Reflection.Assembly.GetEntryAssembly();
             if (assembly != null && File.Exists(assembly.Location))
             {
@@ -35,39 +39,35 @@ public partial class MainWindow : Window
             System.Diagnostics.Debug.WriteLine($"Failed to set tray icon: {ex.Message}");
         }
 
-        // Setup Content transition animation
+        // Use WeakEventManager to avoid leaking a strong reference from the VM back to the View
         if (DataContext is LauncherTF2.ViewModels.MainViewModel vm)
         {
-            vm.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(vm.CurrentView))
-                {
-                    AnimateContentTransition();
-                }
-            };
+            PropertyChangedEventManager.AddHandler(vm, OnCurrentViewChanged, nameof(vm.CurrentView));
         }
-        else
-        {
-            this.DataContextChanged += (s, e) =>
-            {
-                if (e.NewValue is LauncherTF2.ViewModels.MainViewModel newVm)
-                {
-                    newVm.PropertyChanged += (s2, e2) =>
-                    {
-                        if (e2.PropertyName == nameof(newVm.CurrentView))
-                        {
-                            AnimateContentTransition();
-                        }
-                    };
-                }
-            };
-        }
+
+        DataContextChanged += OnDataContextChanged;
     }
 
+    // Swaps the PropertyChanged subscription when DataContext changes
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.OldValue is INotifyPropertyChanged oldVm)
+            PropertyChangedEventManager.RemoveHandler(oldVm, OnCurrentViewChanged, nameof(LauncherTF2.ViewModels.MainViewModel.CurrentView));
+
+        if (e.NewValue is LauncherTF2.ViewModels.MainViewModel newVm)
+            PropertyChangedEventManager.AddHandler(newVm, OnCurrentViewChanged, nameof(newVm.CurrentView));
+    }
+
+    private void OnCurrentViewChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        AnimateContentTransition();
+    }
+
+    // Quick fade-out → fade-in when switching tabs
     private void AnimateContentTransition()
     {
         if (_mainContentControl == null) return;
-        
+
         var fadeOut = new DoubleAnimation(0.5, TimeSpan.FromSeconds(0.05));
         var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.15));
 
@@ -75,36 +75,32 @@ public partial class MainWindow : Window
         _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 
+    // Custom title bar drag support
     private void TopBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
-        {
             this.DragMove();
-        }
     }
 
-    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-    {
-        MinimizarParaBandeja();
-    }
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e) => HideToTray();
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => HideToTray();
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        MinimizarParaBandeja();
-    }
-
+    /// <summary>
+    /// Intercepts Alt+F4 and taskbar close — the app can only be fully
+    /// closed via the tray context menu "Exit" command.
+    /// </summary>
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        base.OnClosing(e);
-        if (DataContext is LauncherTF2.ViewModels.MainViewModel vm)
-        {
-            vm.Cleanup();
-        }
+        e.Cancel = true;
+        HideToTray();
     }
 
-    private void MinimizarParaBandeja()
+    private void HideToTray()
     {
         Hide();
-        _trayIcon?.ShowBalloonTip("Eternal TF2", "O launcher continua em execução em segundo plano.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+        _trayIcon?.ShowBalloonTip(
+            "Eternal TF2",
+            "O launcher continua em execução em segundo plano.",
+            Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }
 }

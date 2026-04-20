@@ -108,7 +108,7 @@ public class SettingsViewModel : ViewModelBase
 
     private BindModel? _listeningBind;
 
-    public RpcViewModel Rpc { get; } = new RpcViewModel();
+
 
     public string[] AvailableKeys { get; } =
     [
@@ -126,16 +126,14 @@ public class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel()
     {
-        _settingsService = new SettingsService();
+        _settingsService = ServiceLocator.Settings;
         _autoexecParser = new AutoexecParser();
 
-        // Load initial settings
         _currentSettings = _settingsService.GetSettings();
 
-        // Ensure defaults if missing
         if (string.IsNullOrEmpty(_currentSettings.SteamPath) || _currentSettings.SteamPath == @"C:\Program Files (x86)\Steam")
         {
-            _currentSettings.SteamPath = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf";
+            _currentSettings.SteamPath = GamePaths.DefaultTf2Path;
         }
 
         if (string.IsNullOrEmpty(_currentSettings.LaunchArgs))
@@ -143,93 +141,46 @@ public class SettingsViewModel : ViewModelBase
             _currentSettings.LaunchArgs = "+exec w/config.cfg +exec autoexec.cfg";
         }
 
-        // Load values from autoexec (read-only sync, writing happens on save)
         _autoexecParser.LoadFromAutoexec(_currentSettings, _currentSettings.SteamPath);
 
-        // Load launcher settings
         LoadLauncherSettings();
 
-        // Events
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
 
-        // Commands
         ResetCommand = new RelayCommand(o => Reset());
         AddBindCommand = new RelayCommand(o => AddBind());
         RemoveBindCommand = new RelayCommand(o => RemoveBind(o));
         StartListeningCommand = new RelayCommand(o => StartListening(o));
     }
 
-    private const string LauncherSettingsFile = "launcher_config.json";
-
     private void LoadLauncherSettings()
     {
-        try
+        var config = _settingsService.GetLauncherConfig();
+        _enableDebugLog = config.EnableDebugLog;
+        _currentLogLevel = config.LogLevel ?? "Info";
+        _autoClearLogs = config.AutoClearLogs;
+        _minimizeToTrayOnLaunch = config.MinimizeToTrayOnLaunch;
+        _closeToTray = config.CloseToTray;
+        _showNotifications = config.ShowNotifications;
+
+        if (Enum.TryParse<LogLevel>(_currentLogLevel, out var logLevel))
         {
-            var configPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LauncherSettingsFile);
-            if (System.IO.File.Exists(configPath))
-            {
-                var json = System.IO.File.ReadAllText(configPath);
-                var config = System.Text.Json.JsonSerializer.Deserialize<LauncherConfig>(json);
-                if (config != null)
-                {
-                    _enableDebugLog = config.EnableDebugLog;
-                    _currentLogLevel = config.LogLevel ?? "Info";
-                    _autoClearLogs = config.AutoClearLogs;
-                    _minimizeToTrayOnLaunch = config.MinimizeToTrayOnLaunch;
-                    _closeToTray = config.CloseToTray;
-                    _showNotifications = config.ShowNotifications;
-                    
-                    // Apply log level
-                    if (Enum.TryParse<LogLevel>(_currentLogLevel, out var logLevel))
-                    {
-                        Logger.MinimumLogLevel = logLevel;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError("Failed to load launcher settings", ex);
+            Logger.MinimumLogLevel = logLevel;
         }
     }
 
     private void SaveLauncherSettings()
     {
-        try
+        _settingsService.SaveLauncherConfig(new LauncherConfig
         {
-            var config = new LauncherConfig
-            {
-                EnableDebugLog = _enableDebugLog,
-                LogLevel = _currentLogLevel,
-                AutoClearLogs = _autoClearLogs,
-                MinimizeToTrayOnLaunch = _minimizeToTrayOnLaunch,
-                CloseToTray = _closeToTray,
-                ShowNotifications = _showNotifications
-            };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
-            
-            var configPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LauncherSettingsFile);
-            System.IO.File.WriteAllText(configPath, json);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError("Failed to save launcher settings", ex);
-        }
-    }
-
-    private class LauncherConfig
-    {
-        public bool EnableDebugLog { get; set; }
-        public string? LogLevel { get; set; }
-        public bool AutoClearLogs { get; set; }
-        public bool MinimizeToTrayOnLaunch { get; set; }
-        public bool CloseToTray { get; set; }
-        public bool ShowNotifications { get; set; }
+            EnableDebugLog = _enableDebugLog,
+            LogLevel = _currentLogLevel,
+            AutoClearLogs = _autoClearLogs,
+            MinimizeToTrayOnLaunch = _minimizeToTrayOnLaunch,
+            CloseToTray = _closeToTray,
+            ShowNotifications = _showNotifications
+        });
     }
 
     private void StartListening(object? parameter)
@@ -269,14 +220,12 @@ public class SettingsViewModel : ViewModelBase
 
     private static string MapKeyToSource(Key key)
     {
-        // Basic alphanumeric
         if (key >= Key.A && key <= Key.Z) return key.ToString().ToLower();
         if (key >= Key.D0 && key <= Key.D9) return key.ToString().TrimStart('D');
         if (key >= Key.F1 && key <= Key.F12) return key.ToString().ToLower();
 
         return key switch
         {
-            // Keypad
             Key.NumPad0 => "kp_ins",
             Key.NumPad1 => "kp_end",
             Key.NumPad2 => "kp_downarrow",
@@ -294,7 +243,6 @@ public class SettingsViewModel : ViewModelBase
             Key.Decimal => "kp_del",
             Key.Return => "enter",
 
-            // Special keys
             Key.Escape => "escape",
             Key.Space => "space",
             Key.Back => "backspace",
@@ -414,7 +362,6 @@ public class SettingsViewModel : ViewModelBase
         var args = _currentSettings.LaunchArgs ?? "";
         var parts = args.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
 
-        // Helper to update/add/remove flags
         void SetFlag(string flag, bool enable)
         {
             if (enable)
@@ -438,7 +385,7 @@ public class SettingsViewModel : ViewModelBase
                 }
                 else
                 {
-                    parts.Add(value); // Should have been there, but append if missing
+                    parts.Add(value);
                 }
             }
             else
@@ -448,8 +395,6 @@ public class SettingsViewModel : ViewModelBase
             }
         }
 
-
-        // Booleans
         SetFlag("-novid", _currentSettings.SkipIntro);
         SetFlag("-nojoy", _currentSettings.DisableJoystick);
         SetFlag("-high", _currentSettings.HighPriority);
@@ -461,7 +406,6 @@ public class SettingsViewModel : ViewModelBase
         SetFlag("-softparticlesdefaultoff", _currentSettings.SoftParticlesOff);
         SetFlag("-no_steam_controller", _currentSettings.DisableSteamController);
 
-        // Values
         SetValue("-threads", _currentSettings.Threads.ToString());
         SetValue("-dxlevel", _currentSettings.DxLevel.ToString());
         SetValue("-w", _currentSettings.Width.ToString());
@@ -478,7 +422,6 @@ public class SettingsViewModel : ViewModelBase
         _settingsService.ResetSettings();
         CurrentSettings = _settingsService.GetSettings();
 
-        // Initial sync to ensure UI matches default settings
         SyncLaunchOptions();
 
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;

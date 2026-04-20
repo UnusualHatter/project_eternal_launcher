@@ -1,171 +1,173 @@
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using LauncherTF2.Core;
 
 namespace LauncherTF2.Services;
 
+/// <summary>
+/// Orchestrates TF2 game launch: runs the Steam patcher, starts TF2 via the
+/// Steam protocol, waits for the process, and triggers pure_patcher when ready.
+/// </summary>
 public class GameService
 {
     private readonly SettingsService _settingsService;
+    private int _launchOrchestrationInProgress;
+    private const string PurePatcherGateKey = "pure_patcher_session";
 
-    public GameService()
+    public GameService(SettingsService settingsService)
     {
-        _settingsService = new SettingsService();
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
     }
 
+    /// <summary>
+    /// Entry point for launching TF2. Starts the full orchestration pipeline
+    /// in the background and minimizes the launcher to the system tray.
+    /// </summary>
     public bool LaunchTF2()
     {
         try
         {
-            Logger.LogInfo("Tentando iniciar o TF2");
+            Logger.LogInfo("[Game] Launch requested");
+
+            // Prevent multiple simultaneous launch attempts
+            if (Interlocked.CompareExchange(ref _launchOrchestrationInProgress, 1, 0) != 0)
+            {
+                Logger.LogWarning("[Game] Launch ignored — previous orchestration still running");
+                return true;
+            }
 
             var settings = _settingsService.GetSettings();
             if (settings == null)
             {
-                Logger.LogError("As configurações estão nulas, não é possível iniciar o jogo");
+                Logger.LogError("[Game] Cannot launch — settings are null");
                 return false;
             }
 
-            var userArgs = settings.LaunchArgs ?? string.Empty;
-            var finalArgs = userArgs.Trim();
+            var finalArgs = (settings.LaunchArgs ?? string.Empty).Trim();
 
             if (!IsSteamPathValid(settings.SteamPath))
+                Logger.LogWarning($"[Game] Steam path looks invalid: {settings.SteamPath}");
+
+            // Allow pure_patcher to run exactly once this session
+            NativeExecutableService.ResetSingleFlight(PurePatcherGateKey);
+
+            // The orchestration runs entirely in the background so the UI stays responsive
+            _ = Task.Run(async () =>
             {
-                Logger.LogWarning($"O caminho do Steam é inválido ou não existe: {settings.SteamPath}");
-            }
+                try
+                {
+                    await OrchestrateSteamPatcherAndLaunch(finalArgs);
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
+                }
+            });
 
-            // Run the steam patcher and orchestrate the steam restart + TF2 launch in background
-            _ = Task.Run(() => OrchestrateSteamPatcherAndLaunch(finalArgs, settings.SteamPath));
-
-            MinimizarJanelaParaTray();
+            // Hide the launcher while the game is running
+            MinimizeToTray();
 
             return true;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Erro inesperado ao iniciar o TF2", ex);
+            Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
+            Logger.LogError("[Game] Unexpected error during launch", ex);
             return false;
         }
     }
 
-    private async Task OrchestrateSteamPatcherAndLaunch(string finalArgs, string steamPath)
+    /// <summary>
+    /// Full orchestration pipeline:
+    ///   1. Run steam_patcher.exe (patches Steam client)
+    ///   2. Wait for Steam to restart (if it does)
+    ///   3. Launch TF2 via steam:// protocol
+    ///   4. Wait for tf_win64 process and trigger pure_patcher
+    /// </summary>
+    private async Task OrchestrateSteamPatcherAndLaunch(string finalArgs)
     {
         try
         {
-            var basePath = AppDomain.CurrentDomain.BaseDirectory;
-            var steamPatcherPath = Path.Combine(basePath, "native", "steam_patcher.exe");
-            if (!File.Exists(steamPatcherPath))
-            {
-                steamPatcherPath = Path.Combine(basePath, "steam_patcher.exe");
-            }
+            // Step 1: Run the Steam patcher
+            Logger.LogInfo("[Game] Starting steam_patcher.exe");
+            _ = NativeExecutableService.TryStartExecutable("steam_patcher.exe", "Game launch orchestration");
 
-            try
-            {
-                if (File.Exists(steamPatcherPath))
-                {
-                    Logger.LogInfo($"Starting steam_patcher: {steamPatcherPath}");
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = steamPatcherPath,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    });
-                }
-                else
-                {
-                    Logger.LogWarning("steam_patcher.exe not found; proceeding to launch TF2 directly");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning("Failed to start steam_patcher", ex);
-            }
+            bool steamWasRunning = IsProcessRunning("steam");
 
-            // Avalia se a Steam está rodando no ato do Launch
-            bool initialRunning = IsProcessRunning("steam");
-
-            if (initialRunning)
+            if (steamWasRunning)
             {
-                Logger.LogDebug("Aguardando possível reinício rápido da Steam (pelo patcher)...");
-                // Dá um intervalo muito curto de 5 a 10s para ver se o patcher vai dar kill no processo
+                // The patcher may restart Steam — wait for it to close
+                Logger.LogDebug("[Game] Steam is running — waiting for potential restart...");
                 await WaitForProcessAsync("steam", waitForExit: true, timeoutSeconds: 6);
             }
 
-            // O patcher pode ter matado a steam, ou ela pode nunca ter estado aberta
-            bool isSteamStarting = !IsProcessRunning("steam");
-
-            if (isSteamStarting)
+            // Step 2: Make sure Steam is actually running before launching TF2
+            if (!IsProcessRunning("steam"))
             {
-                Logger.LogDebug("Aguardando processo da Steam iniciar na memória...");
+                Logger.LogInfo("[Game] Waiting for Steam process to start...");
                 await WaitForProcessAsync("steam", waitForExit: false, timeoutSeconds: 60);
 
-                // Aguarda até que a interface principal da Steam carregue (ou timeout de 15s para Steams ocultas no Tray)
-                Logger.LogDebug("Aguardando a inicialização da Steam...");
+                Logger.LogDebug("[Game] Steam process found — waiting for window initialization...");
                 await WaitForProcessWindowAsync("steam", timeoutSeconds: 15);
 
-                // Um pequeno tempo de "respiro" após o processo estabilizar para fluir IPC sem fila longa.
+                // Brief delay for Steam IPC readiness
                 await Task.Delay(2000);
             }
             else
             {
-                Logger.LogDebug("A Steam já estava rodando e pronta. Prosseguindo...");
+                Logger.LogDebug("[Game] Steam already running — skipping wait");
             }
 
-            // Launch TF2 via Steam URL
+            // Step 3: Launch TF2 through Steam
             TryLaunchThroughSteam(finalArgs);
 
-            // After TF2 starts, launch pure_patcher (no -condebug needed)
+            // Step 4: Wait for TF2 and trigger pure_patcher
             await WaitForTf2AndLaunchPurePatcher();
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error while orchestrating steam patcher and TF2 launch", ex);
+            Logger.LogError("[Game] Orchestration pipeline failed", ex);
         }
     }
 
+    /// <summary>
+    /// Waits for the TF2 process to appear, then triggers pure_patcher.exe
+    /// to apply runtime patches while the game is loading.
+    /// </summary>
     private async Task WaitForTf2AndLaunchPurePatcher()
     {
         try
         {
-            // Wait up to 120s for tf_win64 to appear
+            Logger.LogInfo("[Game] Waiting for tf_win64 process (timeout: 120s)...");
             await WaitForProcessAsync("tf_win64", waitForExit: false, timeoutSeconds: 120);
 
             if (!IsProcessRunning("tf_win64"))
             {
-                Logger.LogWarning("tf_win64 process not detected after 120s; skipping pure_patcher launch");
+                Logger.LogWarning("[Game] TF2 not detected after 120s — skipping pure_patcher");
                 return;
             }
 
-            // Wait for TF2 main window to appear — this happens when the game reaches the main menu
+            Logger.LogInfo("[Game] TF2 process detected — waiting for window...");
             await WaitForProcessWindowAsync("tf_win64", timeoutSeconds: 120);
 
-            var basePath = AppDomain.CurrentDomain.BaseDirectory;
-            var purePatcher = Path.Combine(basePath, "native", "pure_patcher.exe");
-            if (!File.Exists(purePatcher))
-                purePatcher = Path.Combine(basePath, "pure_patcher.exe");
-
-            if (!File.Exists(purePatcher))
-            {
-                Logger.LogWarning($"pure_patcher.exe not found at: {purePatcher}");
-                return;
-            }
-
-            Logger.LogInfo($"Launching pure_patcher: {purePatcher}");
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = purePatcher,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
+            Logger.LogInfo("[Game] TF2 window ready — launching pure_patcher.exe");
+            _ = NativeExecutableService.TryStartSingleFlight(
+                "pure_patcher.exe",
+                PurePatcherGateKey,
+                "TF2 process ready");
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error while waiting for TF2 to launch pure_patcher", ex);
+            Logger.LogError("[Game] Error during post-launch patching", ex);
         }
     }
 
+    /// <summary>
+    /// Verifies that the TF2 installation exists at the configured Steam path.
+    /// </summary>
     public bool ValidateGameInstallation()
     {
         try
@@ -173,7 +175,7 @@ public class GameService
             var settings = _settingsService.GetSettings();
             if (settings == null || string.IsNullOrWhiteSpace(settings.SteamPath))
             {
-                Logger.LogWarning("Não foi possível validar a instalação do jogo: configurações ou caminho do Steam ausentes");
+                Logger.LogWarning("[Game] Cannot validate — Steam path not configured");
                 return false;
             }
 
@@ -181,23 +183,23 @@ public class GameService
 
             if (!Directory.Exists(tf2Path))
             {
-                Logger.LogWarning($"O diretório do TF2 não existe: {tf2Path}");
+                Logger.LogWarning($"[Game] TF2 directory missing: {tf2Path}");
                 return false;
             }
 
             var tf2Exe = Path.Combine(tf2Path, "tf_win64.exe");
             if (!File.Exists(tf2Exe))
             {
-                Logger.LogWarning($"O arquivo tf_win64.exe não foi encontrado em: {tf2Path}");
+                Logger.LogWarning($"[Game] tf_win64.exe not found in: {tf2Path}");
                 return false;
             }
 
-            Logger.LogInfo("Instalação do jogo validada com sucesso");
+            Logger.LogInfo("[Game] Installation validated successfully");
             return true;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Erro ao validar a instalação do jogo", ex);
+            Logger.LogError("[Game] Validation failed", ex);
             return false;
         }
     }
@@ -206,54 +208,50 @@ public class GameService
     {
         try
         {
-            var isRunning = IsProcessRunning("tf_win64");
-            Logger.LogDebug($"Verificação de jogo em execução: {isRunning}");
-            return isRunning;
+            return IsProcessRunning("tf_win64");
         }
         catch (Exception ex)
         {
-            Logger.LogError("Erro ao verificar se o jogo está em execução", ex);
+            Logger.LogError("[Game] Error checking game process", ex);
             return false;
         }
     }
 
+    // Launches TF2 via the Steam protocol URL
     private bool TryLaunchThroughSteam(string args)
     {
-        // URL-encode the args portion to preserve spaces and +/- characters
         var encoded = string.IsNullOrWhiteSpace(args) ? string.Empty : Uri.EscapeDataString(args);
-        var steamUrl = string.IsNullOrWhiteSpace(encoded) ? "steam://rungameid/440" : $"steam://rungameid/440//{encoded}";
-        Logger.LogInfo($"Iniciando o TF2 com a URL: {steamUrl}");
+        var steamUrl = string.IsNullOrWhiteSpace(encoded)
+            ? "steam://rungameid/440"
+            : $"steam://rungameid/440//{encoded}";
 
-        var startInfo = new ProcessStartInfo
+        Logger.LogInfo($"[Game] Launching TF2 — URL: {steamUrl}");
+
+        Process.Start(new ProcessStartInfo
         {
             FileName = steamUrl,
             UseShellExecute = true
-        };
+        });
 
-        Process.Start(startInfo);
-        Logger.LogInfo("Comando de início do TF2 enviado com sucesso");
+        Logger.LogInfo("[Game] Launch command sent to Steam");
         return true;
     }
 
-    private bool StartRuntimeMonitoring()
-    {
-        // Injection via native Xenos was removed — runtime monitoring for injection is deprecated.
-        Logger.LogInfo("Runtime injection monitoring removed (legacy Xenos injector)");
-        return true;
-    }
-
-    private void MinimizarJanelaParaTray()
+    // Hides the launcher window to the system tray
+    private void MinimizeToTray()
     {
         var mainWindow = Application.Current?.MainWindow;
         if (mainWindow == null)
         {
-            Logger.LogWarning("A janela principal não foi encontrada, então não foi possível minimizar para o tray");
+            Logger.LogWarning("[Game] Cannot minimize — MainWindow not found");
             return;
         }
 
         mainWindow.Hide();
-        Logger.LogInfo("Launcher minimizado para o tray");
+        Logger.LogInfo("[Game] Launcher minimized to system tray");
     }
+
+    // Process utility helpers
 
     private static bool IsProcessRunning(string processName)
     {
@@ -263,6 +261,7 @@ public class GameService
         return running;
     }
 
+    // Polls until a process starts or exits (depending on waitForExit flag)
     private static async Task WaitForProcessAsync(string processName, bool waitForExit, int timeoutSeconds)
     {
         var sw = Stopwatch.StartNew();
@@ -275,6 +274,7 @@ public class GameService
         }
     }
 
+    // Polls until the process has a visible main window (fully initialized)
     private static async Task WaitForProcessWindowAsync(string processName, int timeoutSeconds)
     {
         var sw = Stopwatch.StartNew();
@@ -286,14 +286,11 @@ public class GameService
             {
                 p.Refresh();
                 if (p.MainWindowHandle != IntPtr.Zero)
-                {
                     hasWindow = true;
-                }
                 p.Dispose();
             }
-            
+
             if (hasWindow) return;
-            
             await Task.Delay(500);
         }
     }

@@ -1,14 +1,11 @@
 using LauncherTF2.Core;
 using LauncherTF2.Models;
 using LauncherTF2.Services;
-using LauncherTF2.Views;
-using SharpCompress.Common;
-using SharpCompress.Readers;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
+using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -22,6 +19,7 @@ namespace LauncherTF2.ViewModels;
 public class ModsViewModel : ViewModelBase
 {
     private readonly ModManagerService _modService;
+    private readonly ModInstallationService _installService;
     private readonly GameBananaEnrichmentService _enrichmentService;
     private ObservableCollection<ModModel> _allMods;
     private ICollectionView _filteredModsView;
@@ -31,6 +29,8 @@ public class ModsViewModel : ViewModelBase
     private bool _isDropPanelExpanded = true;
     private bool _isInstalling;
     private string _statusMessage = string.Empty;
+    private CancellationTokenSource? _enrichmentCts;
+    private int _loadVersion;
 
     public ObservableCollection<ModModel> AllMods
     {
@@ -110,8 +110,10 @@ public class ModsViewModel : ViewModelBase
 
     public ModsViewModel()
     {
-        _modService = new ModManagerService();
-        _enrichmentService = new GameBananaEnrichmentService();
+        // Wire up shared services from the composition root
+        _modService = ServiceLocator.ModManager;
+        _installService = new ModInstallationService(_modService);
+        _enrichmentService = ServiceLocator.Enrichment;
         _allMods = new ObservableCollection<ModModel>();
         _filteredModsView = CollectionViewSource.GetDefaultView(_allMods);
         _filteredModsView.Filter = FilterMod;
@@ -133,7 +135,7 @@ public class ModsViewModel : ViewModelBase
         {
             if (o is ModModel mod)
             {
-                var confirmed = ConfirmDialog.Show(
+                var confirmed = Views.ConfirmDialog.Show(
                     "Remove Mod",
                     $"Are you sure you want to permanently remove \"{mod.Name}\"?\nThis will delete the mod files from your disk.");
 
@@ -145,10 +147,12 @@ public class ModsViewModel : ViewModelBase
                         _allMods.Remove(mod);
                         RefreshStats();
                         StatusMessage = $"Removed: {mod.Name}";
+                        Logger.LogInfo($"[Mods] Removed mod: {mod.Name}");
                     }
                     else
                     {
                         StatusMessage = $"Failed to remove: {mod.Name}";
+                        Logger.LogWarning($"[Mods] Failed to remove mod: {mod.Name}");
                     }
                 }
             }
@@ -176,12 +180,11 @@ public class ModsViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Logger.LogError("Failed to open mods folder", ex);
+                Logger.LogError("[Mods] Failed to open mods folder", ex);
                 StatusMessage = "Could not open mods folder.";
             }
         });
 
-        // Initialize mod list
         LoadMods();
     }
 
@@ -190,6 +193,8 @@ public class ModsViewModel : ViewModelBase
     /// </summary>
     public void LoadMods()
     {
+        CancelPreviousEnrichment();
+
         _allMods.Clear();
         _modService.RefreshMods();
 
@@ -207,40 +212,46 @@ public class ModsViewModel : ViewModelBase
             : "No mods installed.";
 
         // Enrich in background — cards update progressively as metadata arrives
-        // Fire-and-forget with explicit exception logging so errors are never silently swallowed
         var modsToEnrich = _allMods.ToList();
-        Task.Run(() => EnrichModsAsync(modsToEnrich)).ContinueWith(t =>
+        var currentVersion = Interlocked.Increment(ref _loadVersion);
+        var cts = new CancellationTokenSource();
+        _enrichmentCts = cts;
+
+        _ = EnrichModsAsync(modsToEnrich, currentVersion, cts.Token).ContinueWith(t =>
         {
             if (t.Exception != null)
-                Logger.LogError("EnrichModsAsync crashed", t.Exception.Flatten());
-        }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
+                Logger.LogError("[Mods] Background enrichment crashed", t.Exception.Flatten());
+        }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     /// <summary>
     /// Enriches each mod with GameBanana metadata (thumbnail + author) in the background.
     /// Runs concurrently with max 3 simultaneous requests.
-    /// Uses Dispatcher.BeginInvoke for fire-and-forget UI updates (no deadlock risk).
     /// </summary>
-    private async Task EnrichModsAsync(List<ModModel> mods)
+    private async Task EnrichModsAsync(List<ModModel> mods, int loadVersion, CancellationToken cancellationToken)
     {
         if (mods.Count == 0) return;
 
-        Logger.LogInfo($"Starting GameBanana enrichment for {mods.Count} mods");
+        Logger.LogInfo($"[Mods] Starting GameBanana enrichment for {mods.Count} mods");
 
-        var dispatcher = System.Windows.Application.Current.Dispatcher;
-        var semaphore = new System.Threading.SemaphoreSlim(3);
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null)
+        {
+            Logger.LogWarning("[Mods] Skipping enrichment — no WPF dispatcher available");
+            return;
+        }
+
+        using var semaphore = new SemaphoreSlim(3);
         int enriched = 0;
 
         var tasks = mods.Select(async mod =>
         {
-            await semaphore.WaitAsync().ConfigureAwait(false);
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                string author = mod.Author;
-                string thumb = mod.ThumbnailPath;
-                bool gotEnriched = false;
+                if (cancellationToken.IsCancellationRequested || loadVersion != _loadVersion)
+                    return;
 
-                // All heavy work on thread pool
                 var snapshot = new ModModel
                 {
                     Name = mod.Name,
@@ -250,20 +261,22 @@ public class ModsViewModel : ViewModelBase
 
                 await _enrichmentService.EnrichModAsync(snapshot).ConfigureAwait(false);
 
-                author = snapshot.Author;
-                thumb = snapshot.ThumbnailPath;
-                gotEnriched = snapshot.IsEnriched;
+                if (cancellationToken.IsCancellationRequested || loadVersion != _loadVersion)
+                    return;
+
+                var author = snapshot.Author;
+                var thumb = snapshot.ThumbnailPath;
+                var gotEnriched = snapshot.IsEnriched;
 
                 if (gotEnriched)
-                    System.Threading.Interlocked.Increment(ref enriched);
+                    Interlocked.Increment(ref enriched);
 
-                // Convert local path to BitmapImage on thread pool (IO already done, just decode)
+                // Build BitmapImage on thread pool (frozen for cross-thread safety)
                 System.Windows.Media.Imaging.BitmapImage? bitmap = null;
                 if (gotEnriched && !string.IsNullOrEmpty(thumb) && Path.IsPathRooted(thumb) && File.Exists(thumb))
                 {
                     try
                     {
-                        // Must be created on UI thread or as a frozen image
                         var uri = new Uri(thumb);
                         bitmap = new System.Windows.Media.Imaging.BitmapImage();
                         bitmap.BeginInit();
@@ -271,11 +284,11 @@ public class ModsViewModel : ViewModelBase
                         bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
                         bitmap.CreateOptions = System.Windows.Media.Imaging.BitmapCreateOptions.IgnoreImageCache;
                         bitmap.EndInit();
-                        bitmap.Freeze(); // Make it cross-thread-safe
+                        bitmap.Freeze();
                     }
                     catch (Exception bex)
                     {
-                        Logger.LogWarning($"Failed to build BitmapImage for '{mod.Name}': {bex.Message}");
+                        Logger.LogWarning($"[Mods] Failed to load thumbnail for '{mod.Name}': {bex.Message}");
                         bitmap = null;
                     }
                 }
@@ -286,29 +299,44 @@ public class ModsViewModel : ViewModelBase
                 var capturedEnriched = gotEnriched;
                 _ = dispatcher.BeginInvoke(() =>
                 {
+                    if (cancellationToken.IsCancellationRequested || loadVersion != _loadVersion)
+                        return;
+
                     mod.Author = capturedAuthor;
                     mod.IsEnriched = capturedEnriched;
                     if (capturedBitmap != null)
                         mod.ThumbnailImage = capturedBitmap;
                 });
             }
+            catch (OperationCanceledException)
+            {
+                // Expected when refreshing the mod list
+            }
             catch (Exception ex)
             {
-                Logger.LogWarning($"Enrichment failed for '{mod.Name}': {ex.Message}");
+                Logger.LogWarning($"[Mods] Enrichment failed for '{mod.Name}': {ex.Message}");
             }
             finally
             {
                 semaphore.Release();
             }
-        }).ToList(); // Materialize so all tasks start immediately
+        }).ToList();
 
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-        Logger.LogInfo($"GameBanana enrichment complete: {enriched}/{mods.Count} mods enriched");
+        try
+        {
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            if (!cancellationToken.IsCancellationRequested && loadVersion == _loadVersion)
+                Logger.LogInfo($"[Mods] Enrichment complete — {enriched}/{mods.Count} mods matched on GameBanana");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("[Mods] Enrichment canceled — newer LoadMods cycle started");
+        }
     }
 
     /// <summary>
     /// Handles files/folders dropped onto the install panel.
-    /// Supports .zip, .rar, .7z archives and direct folders/VPK files.
+    /// Delegates archive extraction and installation to ModInstallationService.
     /// </summary>
     public async Task HandleDropAsync(string[] paths)
     {
@@ -316,70 +344,17 @@ public class ModsViewModel : ViewModelBase
             return;
 
         IsInstalling = true;
-        int successCount = 0;
-        int failCount = 0;
+        StatusMessage = "Installing...";
 
         try
         {
-            foreach (var path in paths)
-            {
-                try
-                {
-                    StatusMessage = $"Installing: {Path.GetFileName(path)}...";
+            var (success, fail) = await _installService.InstallFromPathsAsync(paths);
 
-                    if (Directory.Exists(path))
-                    {
-                        // Direct folder — copy to custom
-                        if (_modService.InstallMod(path))
-                            successCount++;
-                        else
-                            failCount++;
-                    }
-                    else if (File.Exists(path))
-                    {
-                        var ext = Path.GetExtension(path).ToLowerInvariant();
-
-                        if (ext == ".vpk")
-                        {
-                            // Direct VPK — copy to custom
-                            if (_modService.InstallMod(path))
-                                successCount++;
-                            else
-                                failCount++;
-                        }
-                        else if (ext == ".zip")
-                        {
-                            // ZIP — extract using built-in support
-                            await Task.Run(() => ExtractZip(path));
-                            successCount++;
-                        }
-                        else if (ext is ".rar" or ".7z" or ".7zip")
-                        {
-                            // RAR / 7Z — extract using SharpCompress
-                            await ExtractArchiveAsync(path);
-                            successCount++;
-                        }
-                        else
-                        {
-                            Logger.LogWarning($"Unsupported file type: {ext}");
-                            failCount++;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError($"Failed to install dropped item: {path}", ex);
-                    failCount++;
-                }
-            }
-
-            // Refresh the library after installing
             LoadMods();
 
-            if (failCount == 0)
-                StatusMessage = $"Installed {successCount} mod(s) successfully!";
-            else
-                StatusMessage = $"Installed {successCount}, failed {failCount}.";
+            StatusMessage = fail == 0
+                ? $"Installed {success} mod(s) successfully!"
+                : $"Installed {success}, failed {fail}.";
         }
         finally
         {
@@ -387,185 +362,20 @@ public class ModsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Extracts a .zip archive into the TF2 custom folder.
-    /// </summary>
-    private void ExtractZip(string zipPath)
+    private void CancelPreviousEnrichment()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"tf2mod_{Guid.NewGuid():N}");
-
         try
         {
-            Directory.CreateDirectory(tempDir);
-            ZipFile.ExtractToDirectory(zipPath, tempDir, true);
-            InstallExtractedContents(tempDir, Path.GetFileNameWithoutExtension(zipPath));
+            _enrichmentCts?.Cancel();
+            _enrichmentCts?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("[Mods] Failed to cancel previous enrichment cycle", ex);
         }
         finally
         {
-            TryCleanup(tempDir);
-        }
-    }
-
-    /// <summary>
-    /// Extracts .rar / .7z archives using SharpCompress into the TF2 custom folder.
-    /// </summary>
-    private async Task ExtractArchiveAsync(string archivePath)
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"tf2mod_{Guid.NewGuid():N}");
-
-        try
-        {
-            Directory.CreateDirectory(tempDir);
-
-            await Task.Run(() =>
-            {
-                using var archive = SharpCompress.Archives.ArchiveFactory.Open(archivePath);
-                foreach (var entry in archive.Entries)
-                {
-                    if (!entry.IsDirectory && !string.IsNullOrEmpty(entry.Key))
-                    {
-                        var destPath = Path.Combine(tempDir, entry.Key);
-                        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-                        
-                        using var entryStream = entry.OpenEntryStream();
-                        using var fileStream = System.IO.File.Create(destPath);
-                        entryStream.CopyTo(fileStream);
-                    }
-                }
-            });
-
-            InstallExtractedContents(tempDir, Path.GetFileNameWithoutExtension(archivePath));
-        }
-        finally
-        {
-            TryCleanup(tempDir);
-        }
-    }
-
-    /// <summary>
-    /// After extraction, determines how to install the contents with the following priority:
-    /// 
-    /// 1. VPK files anywhere in the archive → copy each VPK directly to custom/ (ignore folders, readmes, images)
-    /// 2. Folders with TF2 structure (materials/, models/, sound/, etc.) → install those folders
-    /// 3. Fallback → single top-level folder, or wrap multiple items
-    /// </summary>
-    private void InstallExtractedContents(string tempDir, string archiveName)
-    {
-        // ── Priority 1: VPK files (anywhere in the extracted tree) ──────────
-        var vpkFiles = Directory.GetFiles(tempDir, "*.vpk", SearchOption.AllDirectories);
-        if (vpkFiles.Length > 0)
-        {
-            foreach (var vpk in vpkFiles)
-            {
-                _modService.InstallMod(vpk);
-                Logger.LogInfo($"Installed VPK from archive: {Path.GetFileName(vpk)}");
-            }
-            return;
-        }
-
-        // ── Priority 2: Folders that look like TF2 mods ─────────────────────
-        var tf2ModFolders = FindTf2ModFolders(tempDir);
-        if (tf2ModFolders.Count > 0)
-        {
-            foreach (var folder in tf2ModFolders)
-            {
-                _modService.InstallMod(folder);
-                Logger.LogInfo($"Installed TF2 mod folder from archive: {Path.GetFileName(folder)}");
-            }
-            return;
-        }
-
-        // ── Priority 3: Fallback ─────────────────────────────────────────────
-        var topDirs = Directory.GetDirectories(tempDir);
-        var topFiles = Directory.GetFiles(tempDir);
-
-        if (topDirs.Length == 1 && topFiles.Length == 0)
-        {
-            // Single folder — install it directly
-            _modService.InstallMod(topDirs[0]);
-        }
-        else if (topDirs.Length > 0 || topFiles.Length > 0)
-        {
-            // Multiple items — wrap in a folder named after the archive
-            var wrapperDir = Path.Combine(tempDir, archiveName);
-            if (!Directory.Exists(wrapperDir))
-            {
-                Directory.CreateDirectory(wrapperDir);
-                foreach (var file in topFiles)
-                    File.Move(file, Path.Combine(wrapperDir, Path.GetFileName(file)));
-                foreach (var dir in topDirs)
-                    Directory.Move(dir, Path.Combine(wrapperDir, Path.GetFileName(dir)));
-            }
-            _modService.InstallMod(wrapperDir);
-        }
-    }
-
-    /// <summary>
-    /// Known TF2 mod subdirectories. A folder containing any of these is considered a valid TF2 mod.
-    /// </summary>
-    private static readonly string[] Tf2KnownSubdirs =
-    [
-        "materials", "models", "sound", "scripts", "cfg",
-        "particles", "resource", "maps", "media", "expressions"
-    ];
-
-    /// <summary>
-    /// Finds folders that contain TF2 mod structure, searching up to 2 levels deep.
-    /// </summary>
-    private static List<string> FindTf2ModFolders(string rootDir)
-    {
-        var result = new List<string>();
-
-        // Check rootDir itself
-        if (IsTf2ModFolder(rootDir))
-        {
-            result.Add(rootDir);
-            return result;
-        }
-
-        // Check direct children
-        foreach (var dir in Directory.GetDirectories(rootDir))
-        {
-            if (IsTf2ModFolder(dir))
-            {
-                result.Add(dir);
-            }
-            else
-            {
-                // One more level deep (e.g. archive → outer-folder → mod-folder)
-                foreach (var subDir in Directory.GetDirectories(dir))
-                {
-                    if (IsTf2ModFolder(subDir))
-                        result.Add(subDir);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private static bool IsTf2ModFolder(string path)
-    {
-        if (!Directory.Exists(path)) return false;
-
-        var childNames = Directory.GetDirectories(path)
-            .Select(d => Path.GetFileName(d).ToLowerInvariant())
-            .ToHashSet();
-
-        return Tf2KnownSubdirs.Any(known => childNames.Contains(known));
-    }
-
-
-    private static void TryCleanup(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path))
-                Directory.Delete(path, true);
-        }
-        catch
-        {
-            // Ignore cleanup errors
+            _enrichmentCts = null;
         }
     }
 
@@ -577,7 +387,6 @@ public class ModsViewModel : ViewModelBase
         if (obj is not ModModel mod)
             return false;
 
-        // State filter
         var matchesFilter = CurrentFilter switch
         {
             "Enabled" => mod.IsEnabled,
@@ -589,7 +398,6 @@ public class ModsViewModel : ViewModelBase
 
         if (!matchesFilter) return false;
 
-        // Search filter
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
             var query = SearchQuery.Trim();
@@ -601,9 +409,6 @@ public class ModsViewModel : ViewModelBase
         return true;
     }
 
-    /// <summary>
-    /// Notifies the UI that stat properties have changed.
-    /// </summary>
     private void RefreshStats()
     {
         OnPropertyChanged(nameof(TotalModsCount));

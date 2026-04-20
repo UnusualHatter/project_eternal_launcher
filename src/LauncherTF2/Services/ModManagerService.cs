@@ -2,8 +2,6 @@ using LauncherTF2.Models;
 using LauncherTF2.Core;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace LauncherTF2.Services;
@@ -28,37 +26,29 @@ public class ModManagerService
     /// <summary>Resolved path to tf/custom/disabled.</summary>
     public string DisabledFolderPath => Path.Combine(CustomFolderPath, "disabled");
 
-    public ModManagerService()
+    public ModManagerService(SettingsService settingsService)
     {
         _modsConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mod_state.json");
         _hasExistingState = File.Exists(_modsConfigPath);
 
-        CustomFolderPath = ResolveTf2CustomPath();
+        CustomFolderPath = ResolveTf2CustomPath(settingsService);
         InitializeDirectories();
     }
 
-    private string ResolveTf2CustomPath()
+    /// <summary>
+    /// Resolves the TF2 custom folder path from the shared SettingsService
+    /// instead of re-parsing settings.json directly.
+    /// </summary>
+    private string ResolveTf2CustomPath(SettingsService settingsService)
     {
         try
         {
-            var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
-            if (File.Exists(settingsPath))
+            var steamPath = settingsService.GetSettings().SteamPath;
+            if (!string.IsNullOrWhiteSpace(steamPath))
             {
-                var json = File.ReadAllText(settingsPath);
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var settings = JsonSerializer.Deserialize<JsonElement>(json, options);
-
-                if (settings.TryGetProperty("steamPath", out var steamPathProp) ||
-                    settings.TryGetProperty("SteamPath", out steamPathProp))
-                {
-                    var steamPath = steamPathProp.GetString();
-                    if (!string.IsNullOrWhiteSpace(steamPath))
-                    {
-                        var customPath = ResolveCustomFolder(steamPath);
-                        Logger.LogInfo($"Resolved TF2 custom folder: {customPath}");
-                        return customPath;
-                    }
-                }
+                var customPath = ResolveCustomFolder(steamPath);
+                Logger.LogInfo($"Resolved TF2 custom folder: {customPath}");
+                return customPath;
             }
         }
         catch (Exception ex)
@@ -66,7 +56,7 @@ public class ModManagerService
             Logger.LogWarning("Failed to read settings for TF2 custom path", ex);
         }
 
-        var fallback = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf\custom";
+        var fallback = Path.Combine(GamePaths.DefaultTf2Path, "custom");
         Logger.LogInfo($"Using default TF2 custom folder: {fallback}");
         return fallback;
     }
@@ -508,8 +498,3 @@ public class ModManagerService
     }
 }
 
-public class ModState
-{
-    [JsonPropertyName("schema_version")]
-    public int SchemaVersion { get; set; } = 2;
-}
