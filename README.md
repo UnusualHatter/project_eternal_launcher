@@ -64,13 +64,4 @@ Build command: `dotnet build project_eternal_launcher-main.sln -c Debug`
 
 ---
 
-## Screenshots
-
-![Home](resources/Assets/backrnd1.png)
-![Settings](resources/Assets/backrnd2.png)
-![Mods](resources/Assets/backrnd3.png)
-![Inventory](resources/Assets/backrnd4.png)
-
----
-
 MIT — see `LICENSE`.
