@@ -12,7 +12,7 @@ Three things, kept separate so they don't get in each other's way:
 
 **Launch & settings** — Orchestrates TF2 through Steam (including the native patcher flow), persists your settings across sessions, and auto-generates your `autoexec.cfg`. Single-instance with tray support, so it stays out of your way when you don't need it.
 
-**Mod management** — Scans your local mod library, lets you enable/disable/install mods without touching the game folder by hand.
+**Mod management** — Scans your local mod library, lets you enable/disable/install mods without touching the game folder by hand. Mods stay active in casual matches, so your customizations carry over into live play without any extra steps.
 
 **Inventory** — Pulls per-item pricing from multiple stores and shows them side by side, with filtering and sorting. Direct desktop-to-marketplace calls tend to get throttled by anti-bot layers, so a small local backend handles that instead (more on that below).
 
