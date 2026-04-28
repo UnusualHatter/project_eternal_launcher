@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Media;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -15,6 +16,7 @@ public partial class MainWindow : Window
 {
     private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon? _trayIcon;
     private readonly System.Windows.Controls.ContentControl? _mainContentControl;
+    private readonly TranslateTransform? _mainContentTransform;
 
     public MainWindow()
     {
@@ -22,6 +24,7 @@ public partial class MainWindow : Window
 
         _trayIcon = FindName("TrayIcon") as Hardcodet.Wpf.TaskbarNotification.TaskbarIcon;
         _mainContentControl = FindName("MainContentControl") as System.Windows.Controls.ContentControl;
+        _mainContentTransform = _mainContentControl?.RenderTransform as TranslateTransform;
 
         // Extract the app icon from the executable for tray display
         try
@@ -68,10 +71,25 @@ public partial class MainWindow : Window
     {
         if (_mainContentControl == null) return;
 
-        var fadeOut = new DoubleAnimation(0.5, TimeSpan.FromSeconds(0.05));
-        var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.15));
+        var fadeOut = new DoubleAnimation(0.55, TimeSpan.FromSeconds(0.06));
+        var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.16));
+        var slideOut = new DoubleAnimation(10, TimeSpan.FromSeconds(0.06));
+        var slideIn = new DoubleAnimation(0, TimeSpan.FromSeconds(0.16));
 
-        fadeOut.Completed += (s, e) => _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        if (_mainContentTransform != null)
+        {
+            _mainContentTransform.BeginAnimation(TranslateTransform.YProperty, slideOut);
+            fadeOut.Completed += (_, _) =>
+            {
+                _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                _mainContentTransform.BeginAnimation(TranslateTransform.YProperty, slideIn);
+            };
+        }
+        else
+        {
+            fadeOut.Completed += (_, _) => _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        }
+
         _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 

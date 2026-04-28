@@ -23,12 +23,6 @@ public class AutoexecWriter
         sb.AppendLine("// DO NOT EDIT THIS SECTION MANUALLY, IT WILL BE OVERWRITTEN");
         sb.AppendLine("");
 
-        // Launch Options / System
-        sb.AppendLine("// System");
-        if (settings.SkipIntro) sb.AppendLine("-novid"); // Note: Launch args cannot be in autoexec, this is for reference or if we write a launch script later.
-                                                         // Actually, we shouldn't write launch args to autoexec. They go in steam.
-                                                         // We only write console variable commands here.
-
         // Graphics
         sb.AppendLine("// Graphics");
         sb.AppendLine($"mat_vsync {(settings.VSync ? "1" : "0")}");

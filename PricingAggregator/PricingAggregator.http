@@ -1,6 +1,0 @@
-@PricingAggregator_HostAddress = http://localhost:5204
-
-GET {{PricingAggregator_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

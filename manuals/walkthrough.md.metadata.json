@@ -1,0 +1,6 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_WALKTHROUGH",
+  "summary":  "Complete handoff document for the next AI session. Documents all changes made in this session (Settings tab redesign, launch option corrections, model cleanup) and the approved-but-not-yet-executed Home tab rework plan with verified API endpoints and exact implementation details.",
+  "updatedAt":  "2026-04-28T00:48:26.911703800Z",
+  "version":  "1"
+}

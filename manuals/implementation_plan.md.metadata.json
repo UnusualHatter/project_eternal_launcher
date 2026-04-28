@@ -1,0 +1,7 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary":  "Complete implementation plan for reworking the Home tab into a live dashboard showing TF2 Steam news, GameBanana new mods with thumbnails, and adding micro-animations across the launcher. Uses two free public APIs (Steam ISteamNews and GameBanana apiv11) with in-memory caching.",
+  "updatedAt":  "2026-04-28T00:47:26.827962900Z",
+  "version":  "1",
+  "requestFeedback":  true
+}

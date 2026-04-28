@@ -17,7 +17,7 @@ public class MainViewModel : ViewModelBase
     // Child ViewModels — one per tab
     public HomeViewModel HomeVM { get; }
     public InventoryViewModel InventoryVM { get; }
-    public BlogViewModel BlogVM { get; }
+
     public ModsViewModel ModsVM { get; }
     public SettingsViewModel SettingsVM { get; }
 
@@ -43,7 +43,7 @@ public class MainViewModel : ViewModelBase
     // Navigation commands bound to sidebar buttons
     public ICommand HomeViewCommand { get; }
     public ICommand InventoryViewCommand { get; }
-    public ICommand BlogViewCommand { get; }
+
     public ICommand ModsViewCommand { get; }
     public ICommand SettingsViewCommand { get; }
     public ICommand QuitCommand { get; }
@@ -54,7 +54,7 @@ public class MainViewModel : ViewModelBase
     {
         HomeVM = new HomeViewModel();
         InventoryVM = new InventoryViewModel();
-        BlogVM = new BlogViewModel();
+
         ModsVM = new ModsViewModel();
         SettingsVM = new SettingsViewModel();
 
@@ -63,7 +63,7 @@ public class MainViewModel : ViewModelBase
         // Tab navigation
         HomeViewCommand = new RelayCommand(o => CurrentView = HomeVM);
         InventoryViewCommand = new RelayCommand(o => CurrentView = InventoryVM);
-        BlogViewCommand = new RelayCommand(o => CurrentView = BlogVM);
+
         ModsViewCommand = new RelayCommand(o =>
         {
             CurrentView = ModsVM;

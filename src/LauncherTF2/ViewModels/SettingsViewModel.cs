@@ -1,6 +1,7 @@
 using LauncherTF2.Core;
 using LauncherTF2.Models;
 using LauncherTF2.Services;
+using System.IO;
 using System.Windows.Input;
 
 namespace LauncherTF2.ViewModels;
@@ -19,11 +20,18 @@ public class SettingsViewModel : ViewModelBase
     private bool _closeToTray = true;
     private bool _showNotifications = true;
 
+    private string _selectedCategory = "General";
+    private string _displayMode = "Fullscreen";
+    private string _pathValidationMessage = "";
+    private bool _isPathValid;
+
     public SettingsModel CurrentSettings
     {
         get => _currentSettings;
         set => SetProperty(ref _currentSettings, value);
     }
+
+    #region Launcher Config Properties
 
     public bool EnableDebugLog
     {
@@ -57,9 +65,7 @@ public class SettingsViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _autoClearLogs, value))
-            {
                 SaveLauncherSettings();
-            }
         }
     }
 
@@ -69,9 +75,7 @@ public class SettingsViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _minimizeToTrayOnLaunch, value))
-            {
                 SaveLauncherSettings();
-            }
         }
     }
 
@@ -81,9 +85,7 @@ public class SettingsViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _closeToTray, value))
-            {
                 SaveLauncherSettings();
-            }
         }
     }
 
@@ -93,22 +95,60 @@ public class SettingsViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _showNotifications, value))
-            {
                 SaveLauncherSettings();
-            }
         }
     }
 
-    public string[] LogLevels { get; } = { "Debug", "Info", "Warning", "Error" };
+    #endregion
+
+    #region UI Navigation Properties
+
+    public string SelectedCategory
+    {
+        get => _selectedCategory;
+        set => SetProperty(ref _selectedCategory, value);
+    }
+
+    /// <summary>
+    /// Unified display mode replacing 3 separate conflicting checkboxes.
+    /// Maps to/from Fullscreen, Windowed, and Borderless booleans on the model.
+    /// </summary>
+    public string DisplayMode
+    {
+        get => _displayMode;
+        set
+        {
+            if (SetProperty(ref _displayMode, value))
+                ApplyDisplayMode(value);
+        }
+    }
+
+    public string PathValidationMessage
+    {
+        get => _pathValidationMessage;
+        set => SetProperty(ref _pathValidationMessage, value);
+    }
+
+    public bool IsPathValid
+    {
+        get => _isPathValid;
+        set => SetProperty(ref _isPathValid, value);
+    }
+
+    #endregion
+
+    public string[] LogLevels { get; } = ["Debug", "Info", "Warning", "Error"];
+    public string[] DisplayModes { get; } = ["Fullscreen", "Windowed", "Borderless Windowed"];
+    public string[] Categories { get; } = ["General", "Game", "Graphics", "Network", "Advanced", "Launcher", "Binds"];
 
     public ICommand ResetCommand { get; }
     public ICommand AddBindCommand { get; }
     public ICommand RemoveBindCommand { get; }
     public ICommand StartListeningCommand { get; }
+    public ICommand BrowseFolderCommand { get; }
+    public ICommand SelectCategoryCommand { get; }
 
     private BindModel? _listeningBind;
-
-
 
     public string[] AvailableKeys { get; } =
     [
@@ -144,6 +184,8 @@ public class SettingsViewModel : ViewModelBase
         _autoexecParser.LoadFromAutoexec(_currentSettings, _currentSettings.SteamPath);
 
         LoadLauncherSettings();
+        SyncDisplayModeFromModel();
+        ValidateTf2Path(_currentSettings.SteamPath);
 
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
@@ -152,7 +194,102 @@ public class SettingsViewModel : ViewModelBase
         AddBindCommand = new RelayCommand(o => AddBind());
         RemoveBindCommand = new RelayCommand(o => RemoveBind(o));
         StartListeningCommand = new RelayCommand(o => StartListening(o));
+        BrowseFolderCommand = new RelayCommand(o => BrowseFolder());
+        SelectCategoryCommand = new RelayCommand(o => { if (o is string cat) SelectedCategory = cat; });
     }
+
+    #region Display Mode
+
+    private void SyncDisplayModeFromModel()
+    {
+        if (_currentSettings.Fullscreen)
+            _displayMode = "Fullscreen";
+        else if (_currentSettings.Windowed && _currentSettings.Borderless)
+            _displayMode = "Borderless Windowed";
+        else if (_currentSettings.Windowed)
+            _displayMode = "Windowed";
+        else
+            _displayMode = "Fullscreen";
+    }
+
+    private void ApplyDisplayMode(string mode)
+    {
+        _isHandlingConflict = true;
+        try
+        {
+            switch (mode)
+            {
+                case "Fullscreen":
+                    _currentSettings.Fullscreen = true;
+                    _currentSettings.Windowed = false;
+                    _currentSettings.Borderless = false;
+                    break;
+                case "Windowed":
+                    _currentSettings.Fullscreen = false;
+                    _currentSettings.Windowed = true;
+                    _currentSettings.Borderless = false;
+                    break;
+                case "Borderless Windowed":
+                    _currentSettings.Fullscreen = false;
+                    _currentSettings.Windowed = true;
+                    _currentSettings.Borderless = true;
+                    break;
+            }
+            SyncLaunchOptions();
+            _settingsService.SaveSettings(_currentSettings);
+        }
+        finally
+        {
+            _isHandlingConflict = false;
+        }
+    }
+
+    #endregion
+
+    #region Path Validation
+
+    private void ValidateTf2Path(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            IsPathValid = false;
+            PathValidationMessage = "Path is empty";
+            return;
+        }
+
+        var cfgDir = Path.Combine(path, "cfg");
+        if (Directory.Exists(cfgDir))
+        {
+            IsPathValid = true;
+            PathValidationMessage = "✓ Valid TF2 path detected";
+        }
+        else
+        {
+            IsPathValid = false;
+            PathValidationMessage = "⚠ Could not find tf/cfg folder at this path";
+        }
+    }
+
+    private void BrowseFolder()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Select your TF2 'tf' folder",
+            InitialDirectory = Directory.Exists(_currentSettings.SteamPath)
+                ? _currentSettings.SteamPath
+                : Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _currentSettings.SteamPath = dialog.FolderName;
+            ValidateTf2Path(dialog.FolderName);
+        }
+    }
+
+    #endregion
+
+    #region Launcher Config Persistence
 
     private void LoadLauncherSettings()
     {
@@ -182,6 +319,10 @@ public class SettingsViewModel : ViewModelBase
             ShowNotifications = _showNotifications
         });
     }
+
+    #endregion
+
+    #region Bind Listening
 
     private void StartListening(object? parameter)
     {
@@ -306,6 +447,10 @@ public class SettingsViewModel : ViewModelBase
         };
     }
 
+    #endregion
+
+    #region Binds CRUD
+
     private void AddBind()
     {
         CurrentSettings.Binds.Add(new BindModel { Name = "New Bind", Key = "x", Command = "say hello" });
@@ -320,19 +465,33 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
+    #endregion
+
+    #region Property Change + Launch Arg Sync
+
     private bool _isHandlingConflict;
 
     private void CurrentSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (_isHandlingConflict) return;
 
+        if (e.PropertyName == nameof(SettingsModel.SteamPath))
+        {
+            ValidateTf2Path(_currentSettings.SteamPath);
+        }
+
+        // Sync display mode UI when model booleans change externally
+        if (e.PropertyName is nameof(SettingsModel.Fullscreen) or nameof(SettingsModel.Windowed) or nameof(SettingsModel.Borderless))
+        {
+            SyncDisplayModeFromModel();
+            OnPropertyChanged(nameof(DisplayMode));
+        }
+
         if (e.PropertyName != nameof(SettingsModel.LaunchArgs))
         {
             try
             {
                 _isHandlingConflict = true;
-                HandleWindowModeConflicts(e.PropertyName);
-
                 SyncLaunchOptions();
             }
             finally
@@ -343,20 +502,10 @@ public class SettingsViewModel : ViewModelBase
         _settingsService.SaveSettings(_currentSettings);
     }
 
-    private void HandleWindowModeConflicts(string? changedProperty)
-    {
-        if (changedProperty == nameof(SettingsModel.Fullscreen) && _currentSettings.Fullscreen)
-        {
-            _currentSettings.Windowed = false;
-            _currentSettings.Borderless = false;
-        }
-        else if ((changedProperty == nameof(SettingsModel.Windowed) && _currentSettings.Windowed) ||
-                 (changedProperty == nameof(SettingsModel.Borderless) && _currentSettings.Borderless))
-        {
-            _currentSettings.Fullscreen = false;
-        }
-    }
-
+    /// <summary>
+    /// Rebuilds the LaunchArgs string from the current toggle/value states.
+    /// Fixed: now properly removes flags when disabled instead of leaving orphaned args.
+    /// </summary>
     private void SyncLaunchOptions()
     {
         var args = _currentSettings.LaunchArgs ?? "";
@@ -374,24 +523,34 @@ public class SettingsViewModel : ViewModelBase
             }
         }
 
-        void SetValue(string flag, string value)
+        void SetValueFlag(string flag, string value, bool include)
         {
             int index = parts.IndexOf(flag);
-            if (index != -1)
+            if (include)
             {
-                if (index + 1 < parts.Count)
+                if (index != -1)
                 {
-                    parts[index + 1] = value;
+                    // Update existing value
+                    if (index + 1 < parts.Count)
+                        parts[index + 1] = value;
+                    else
+                        parts.Add(value);
                 }
                 else
                 {
+                    parts.Add(flag);
                     parts.Add(value);
                 }
             }
             else
             {
-                parts.Add(flag);
-                parts.Add(value);
+                // Remove flag and its value when disabled
+                if (index != -1)
+                {
+                    if (index + 1 < parts.Count && !parts[index + 1].StartsWith('-') && !parts[index + 1].StartsWith('+'))
+                        parts.RemoveAt(index + 1);
+                    parts.RemoveAt(index);
+                }
             }
         }
 
@@ -405,15 +564,18 @@ public class SettingsViewModel : ViewModelBase
         SetFlag("-nohltv", _currentSettings.DisableHltv);
         SetFlag("-softparticlesdefaultoff", _currentSettings.SoftParticlesOff);
         SetFlag("-no_steam_controller", _currentSettings.DisableSteamController);
+        SetFlag("-no_texture_stream", _currentSettings.NoTextureStream);
+        SetFlag("-noreplay", _currentSettings.DisableReplay);
 
-        SetValue("-threads", _currentSettings.Threads.ToString());
-        SetValue("-dxlevel", _currentSettings.DxLevel.ToString());
-        SetValue("-w", _currentSettings.Width.ToString());
-        SetValue("-h", _currentSettings.Height.ToString());
-        SetValue("-freq", _currentSettings.RefreshRate.ToString());
+        // Value flags — resolution always included, others only when non-default
+        SetValueFlag("-w", _currentSettings.Width.ToString(), true);
+        SetValueFlag("-h", _currentSettings.Height.ToString(), true);
+        SetValueFlag("-freq", _currentSettings.RefreshRate.ToString(), _currentSettings.RefreshRate != 60);
 
         _currentSettings.LaunchArgs = string.Join(" ", parts);
     }
+
+    #endregion
 
     private void Reset()
     {
@@ -423,6 +585,9 @@ public class SettingsViewModel : ViewModelBase
         CurrentSettings = _settingsService.GetSettings();
 
         SyncLaunchOptions();
+        SyncDisplayModeFromModel();
+        OnPropertyChanged(nameof(DisplayMode));
+        ValidateTf2Path(_currentSettings.SteamPath);
 
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);

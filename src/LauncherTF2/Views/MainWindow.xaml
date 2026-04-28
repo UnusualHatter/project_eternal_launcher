@@ -28,9 +28,7 @@
         <DataTemplate DataType="{x:Type vm:InventoryViewModel}">
             <views:InventoryView/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:BlogViewModel}">
-            <views:BlogView/>
-        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:ModsViewModel}">
             <views:ModsView/>
         </DataTemplate>
@@ -148,7 +146,7 @@
                 <RadioButton Content="Home" Style="{StaticResource SidebarButtonStyle}" Command="{Binding HomeViewCommand}" IsChecked="True"/>
                 <RadioButton Content="Inventory" Style="{StaticResource SidebarButtonStyle}" Command="{Binding InventoryViewCommand}"/>
                 <RadioButton Content="Mods" Style="{StaticResource SidebarButtonStyle}" Command="{Binding ModsViewCommand}"/>
-                <RadioButton Content="News" Style="{StaticResource SidebarButtonStyle}" Command="{Binding BlogViewCommand}"/>
+
                 <RadioButton Content="Settings" Style="{StaticResource SidebarButtonStyle}" Command="{Binding SettingsViewCommand}"/>
                 
                 <Separator Background="#333" Margin="20,20"/>
@@ -169,7 +167,11 @@
         </Grid>
 
         <!-- Main Content -->
-        <ContentControl x:Name="MainContentControl" Grid.Column="1" Content="{Binding CurrentView}" Margin="0"/>
+        <ContentControl x:Name="MainContentControl" Grid.Column="1" Content="{Binding CurrentView}" Margin="0" Opacity="1" RenderTransformOrigin="0.5,0.5">
+            <ContentControl.RenderTransform>
+                <TranslateTransform Y="0"/>
+            </ContentControl.RenderTransform>
+        </ContentControl>
             </Grid>
         </Grid>
     </Border>

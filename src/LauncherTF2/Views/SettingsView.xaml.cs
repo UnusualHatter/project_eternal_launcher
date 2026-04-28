@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using LauncherTF2.ViewModels;
@@ -13,12 +14,22 @@ public partial class SettingsView : UserControl
         this.PreviewMouseDown += SettingsView_PreviewMouseDown;
     }
 
+    /// <summary>
+    /// Scrolls the content panel to the section matching the clicked category button's Tag.
+    /// </summary>
+    private void Category_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton btn && btn.Tag is string sectionName)
+        {
+            var section = this.FindName(sectionName) as FrameworkElement;
+            section?.BringIntoView();
+        }
+    }
+
     private void SettingsView_KeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is SettingsViewModel vm)
         {
-            // Note: HandleKeyPress is void, effectively logic is same as mouse but we don't swallow keys yet (maybe we should?)
-            // For now leaving as is unless user complains about typing 'w' into a box while binding 'w'.
             vm.HandleKeyPress(e.Key);
         }
     }
@@ -27,7 +38,6 @@ public partial class SettingsView : UserControl
     {
         if (DataContext is SettingsViewModel vm)
         {
-            // Pass the changed button (the one that was pressed)
             if (vm.HandleMousePress(e.ChangedButton))
             {
                 e.Handled = true;

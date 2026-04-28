@@ -5,9 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d" 
-             d:DesignHeight="1200" d:DesignWidth="1030">
+             d:DesignHeight="900" d:DesignWidth="1030">
     <UserControl.Resources>
-        <!-- Toggle Switch Style -->
+        <!-- Toggle Switch -->
         <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
             <Setter Property="Template">
                 <Setter.Value>
@@ -19,17 +19,11 @@
                             </Grid.ColumnDefinitions>
                             <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
                             <Border x:Name="SwitchTrack" Grid.Column="1" Width="40" Height="20" CornerRadius="10" Margin="10,0,0,0">
-                                <Border.Background>
-                                    <SolidColorBrush x:Name="TrackBrush" Color="#333"/>
-                                </Border.Background>
+                                <Border.Background><SolidColorBrush x:Name="TrackBrush" Color="#333"/></Border.Background>
                                 <Grid>
                                     <Ellipse x:Name="SwitchKnob" Width="16" Height="16" HorizontalAlignment="Left" Margin="2,0,0,0">
-                                        <Ellipse.Fill>
-                                            <SolidColorBrush x:Name="KnobBrush" Color="#888"/>
-                                        </Ellipse.Fill>
-                                        <Ellipse.RenderTransform>
-                                            <TranslateTransform x:Name="KnobTransform" X="0"/>
-                                        </Ellipse.RenderTransform>
+                                        <Ellipse.Fill><SolidColorBrush x:Name="KnobBrush" Color="#888"/></Ellipse.Fill>
+                                        <Ellipse.RenderTransform><TranslateTransform x:Name="KnobTransform" X="0"/></Ellipse.RenderTransform>
                                     </Ellipse>
                                 </Grid>
                             </Border>
@@ -37,104 +31,115 @@
                                 <VisualStateGroup x:Name="CheckStates">
                                     <VisualState x:Name="Checked">
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="KnobTransform" 
-                                                             Storyboard.TargetProperty="X" 
-                                                             To="20" Duration="0:0:0.2" DecelerationRatio="0.5"/>
-                                            <ColorAnimation Storyboard.TargetName="TrackBrush" 
-                                                            Storyboard.TargetProperty="Color" 
-                                                            To="#ff6b00" Duration="0:0:0.2"/>
-                                            <ColorAnimation Storyboard.TargetName="KnobBrush" 
-                                                            Storyboard.TargetProperty="Color" 
-                                                            To="White" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetName="KnobTransform" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.2" DecelerationRatio="0.5"/>
+                                            <ColorAnimation Storyboard.TargetName="TrackBrush" Storyboard.TargetProperty="Color" To="#ff6b00" Duration="0:0:0.2"/>
+                                            <ColorAnimation Storyboard.TargetName="KnobBrush" Storyboard.TargetProperty="Color" To="White" Duration="0:0:0.2"/>
                                         </Storyboard>
                                     </VisualState>
                                     <VisualState x:Name="Unchecked">
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="KnobTransform" 
-                                                             Storyboard.TargetProperty="X" 
-                                                             To="0" Duration="0:0:0.2" DecelerationRatio="0.5"/>
-                                            <ColorAnimation Storyboard.TargetName="TrackBrush" 
-                                                            Storyboard.TargetProperty="Color" 
-                                                            To="#333" Duration="0:0:0.2"/>
-                                            <ColorAnimation Storyboard.TargetName="KnobBrush" 
-                                                            Storyboard.TargetProperty="Color" 
-                                                            To="#888" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetName="KnobTransform" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2" DecelerationRatio="0.5"/>
+                                            <ColorAnimation Storyboard.TargetName="TrackBrush" Storyboard.TargetProperty="Color" To="#333" Duration="0:0:0.2"/>
+                                            <ColorAnimation Storyboard.TargetName="KnobBrush" Storyboard.TargetProperty="Color" To="#888" Duration="0:0:0.2"/>
                                         </Storyboard>
                                     </VisualState>
                                     <VisualState x:Name="Indeterminate"/>
                                 </VisualStateGroup>
                             </VisualStateManager.VisualStateGroups>
                         </Grid>
-
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
             <Setter Property="Foreground" Value="#ddd"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <!-- Section Header Style -->
+        <!-- Category Button -->
+        <Style x:Key="CategoryButtonStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#888"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#1affffff"/>
+                                <Setter Property="Foreground" Value="#ccc"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#22ff6b00"/>
+                                <Setter Property="Foreground" Value="#ff6b00"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Section Header -->
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Margin" Value="0,15,0,10"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
-        <!-- Label Style -->
-        <Style x:Key="LabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#ccc"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,5,10,5"/>
+        <!-- Setting Description -->
+        <Style x:Key="DescStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,-2,0,6"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
-        <!-- Input Style -->
+        <!-- Input TextBox -->
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#222"/>
+            <Setter Property="Background" Value="#1a1a1a"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="5"/>
+            <Setter Property="BorderBrush" Value="#333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <!-- Dark ComboBox Style -->
+        <!-- Dark ComboBox -->
         <ControlTemplate x:Key="ComboBoxToggleButton" TargetType="ToggleButton">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition />
-                    <ColumnDefinition Width="20" />
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="20"/>
                 </Grid.ColumnDefinitions>
-                <Border x:Name="Border" Grid.ColumnSpan="2" CornerRadius="0" Background="#222" BorderBrush="#333" BorderThickness="1" />
-                <Path x:Name="Arrow" Grid.Column="1" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M0,0 L0,2 L4,6 L8,2 L8,0 L4,4 z" />
+                <Border Grid.ColumnSpan="2" CornerRadius="4" Background="#1a1a1a" BorderBrush="#333" BorderThickness="1"/>
+                <Path Grid.Column="1" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M0,0 L0,2 L4,6 L8,2 L8,0 L4,4 z"/>
             </Grid>
         </ControlTemplate>
-
         <ControlTemplate x:Key="ComboBoxTextBox" TargetType="TextBox">
-            <Border x:Name="PART_ContentHost" Focusable="False" Background="{TemplateBinding Background}" />
+            <Border x:Name="PART_ContentHost" Focusable="False" Background="{TemplateBinding Background}"/>
         </ControlTemplate>
-
         <Style TargetType="{x:Type ComboBox}">
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="#222" />
-            <Setter Property="BorderBrush" Value="#333" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-            <Setter Property="OverridesDefaultStyle" Value="True" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
-            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#1a1a1a"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ComboBox}">
                         <Grid>
-                            <ToggleButton Name="ToggleButton" Template="{StaticResource ComboBoxToggleButton}" Grid.Column="2" Focusable="false" IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press" />
-                            <ContentPresenter Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="6,3,23,3" VerticalAlignment="Center" HorizontalAlignment="Left" />
-                            <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" Template="{StaticResource ComboBoxTextBox}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,3,23,3" Focusable="True" Background="#00000000" Foreground="White" Visibility="Hidden" IsReadOnly="{TemplateBinding IsReadOnly}" />
-                            <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                <Grid Name="DropDown" SnapsToDevicePixels="True" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                    <Border x:Name="DropDownBorder" Background="#222" BorderThickness="1" BorderBrush="#333" />
+                            <ToggleButton Template="{StaticResource ComboBoxToggleButton}" Focusable="false" IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press"/>
+                            <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="8,3,23,3" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" Template="{StaticResource ComboBoxTextBox}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,3,23,3" Focusable="True" Background="#00000000" Foreground="White" Visibility="Hidden" IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                            <Popup Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                <Grid SnapsToDevicePixels="True" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border Background="#222" BorderThickness="1" BorderBrush="#333" CornerRadius="4"/>
                                     <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
-                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
                                     </ScrollViewer>
                                 </Grid>
                             </Popup>
@@ -143,72 +148,24 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
-        <!-- Arrays for Dropdowns -->
-        <x:Array x:Key="DxLevels" Type="sys:Int32">
-            <sys:Int32>81</sys:Int32>
-            <sys:Int32>90</sys:Int32>
-            <sys:Int32>95</sys:Int32>
-        </x:Array>
-        
-        <x:Array x:Key="AntiAliasingLevels" Type="sys:Int32">
-            <sys:Int32>0</sys:Int32>
-            <sys:Int32>2</sys:Int32>
-            <sys:Int32>4</sys:Int32>
-            <sys:Int32>8</sys:Int32>
-            <sys:Int32>16</sys:Int32>
-        </x:Array>
-        
-        <x:Array x:Key="AnisoLevels" Type="sys:Int32">
-            <sys:Int32>1</sys:Int32>
-            <sys:Int32>2</sys:Int32>
-            <sys:Int32>4</sys:Int32>
-            <sys:Int32>8</sys:Int32>
-            <sys:Int32>16</sys:Int32>
-        </x:Array>
 
-        <x:Array x:Key="QueueModes" Type="sys:Int32">
-            <sys:Int32>-1</sys:Int32>
-            <sys:Int32>0</sys:Int32>
-            <sys:Int32>1</sys:Int32>
-            <sys:Int32>2</sys:Int32>
-        </x:Array>
-
-        <x:Array x:Key="SpecModes" Type="sys:Int32">
-            <sys:Int32>0</sys:Int32>
-            <sys:Int32>1</sys:Int32>
-            <sys:Int32>2</sys:Int32>
-            <sys:Int32>3</sys:Int32>
-            <sys:Int32>4</sys:Int32>
-            <sys:Int32>5</sys:Int32>
-        </x:Array>
-
-        <!-- Modern Slider Style -->
+        <!-- Slider -->
         <Style x:Key="SliderThumbStyle" TargetType="{x:Type Thumb}">
-             <Setter Property="OverridesDefaultStyle" Value="True"/>
-             <Setter Property="Template">
-                 <Setter.Value>
-                     <ControlTemplate TargetType="{x:Type Thumb}">
-                         <Grid>
-                             <Ellipse x:Name="Ellipse" Fill="White" Stroke="#333" StrokeThickness="1" Width="16" Height="16"/>
-                         </Grid>
-                         <ControlTemplate.Triggers>
-                             <Trigger Property="IsMouseOver" Value="True">
-                                 <Setter TargetName="Ellipse" Property="Fill" Value="{StaticResource AccentBrush}"/>
-                                 <Setter TargetName="Ellipse" Property="Width" Value="18"/>
-                                 <Setter TargetName="Ellipse" Property="Height" Value="18"/>
-                             </Trigger>
-                             <Trigger Property="IsDragging" Value="True">
-                                 <Setter TargetName="Ellipse" Property="Fill" Value="{StaticResource AccentBrush}"/>
-                             </Trigger>
-                         </ControlTemplate.Triggers>
-                     </ControlTemplate>
-                 </Setter.Value>
-             </Setter>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Thumb}">
+                        <Ellipse x:Name="E" Fill="White" Stroke="#333" StrokeThickness="1" Width="16" Height="16"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="E" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
         <Style TargetType="{x:Type Slider}">
-            <Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
             <Setter Property="OverridesDefaultStyle" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -217,7 +174,6 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
-                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="1" Height="4" Background="#333" CornerRadius="2" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track" Grid.Row="1">
@@ -231,7 +187,7 @@
                                     </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Style="{StaticResource SliderThumbStyle}" VerticalAlignment="Center" OverridesDefaultStyle="True"/>
+                                    <Thumb Style="{StaticResource SliderThumbStyle}" VerticalAlignment="Center"/>
                                 </Track.Thumb>
                             </Track>
                         </Grid>
@@ -240,586 +196,404 @@
             </Setter>
         </Style>
 
+        <!-- Dropdown arrays -->
+        <x:Array x:Key="DxLevels" Type="sys:Int32">
+            <sys:Int32>81</sys:Int32><sys:Int32>90</sys:Int32><sys:Int32>95</sys:Int32>
+        </x:Array>
+        <x:Array x:Key="AntiAliasingLevels" Type="sys:Int32">
+            <sys:Int32>0</sys:Int32><sys:Int32>2</sys:Int32><sys:Int32>4</sys:Int32><sys:Int32>8</sys:Int32><sys:Int32>16</sys:Int32>
+        </x:Array>
+        <x:Array x:Key="AnisoLevels" Type="sys:Int32">
+            <sys:Int32>1</sys:Int32><sys:Int32>2</sys:Int32><sys:Int32>4</sys:Int32><sys:Int32>8</sys:Int32><sys:Int32>16</sys:Int32>
+        </x:Array>
+        <x:Array x:Key="QueueModes" Type="sys:Int32">
+            <sys:Int32>-1</sys:Int32><sys:Int32>0</sys:Int32><sys:Int32>1</sys:Int32><sys:Int32>2</sys:Int32>
+        </x:Array>
+        <x:Array x:Key="SpecModes" Type="sys:Int32">
+            <sys:Int32>0</sys:Int32><sys:Int32>1</sys:Int32><sys:Int32>2</sys:Int32><sys:Int32>3</sys:Int32><sys:Int32>4</sys:Int32><sys:Int32>5</sys:Int32>
+        </x:Array>
     </UserControl.Resources>
 
-    <Grid Margin="30">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="180"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Text="Settings" FontSize="32" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
-
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,20,0" Style="{StaticResource ModernScrollViewerStyle}">
+        <!-- Sidebar -->
+        <Border Background="#0d0d0f" Padding="12,20">
             <StackPanel>
-                <!-- TF2 Path -->
-                <Border Background="{StaticResource CardBrush}" Padding="20" CornerRadius="10" Margin="0,0,0,20">
-                    <StackPanel>
-                        <TextBlock Text="TF2 installation path (tf folder)" Foreground="#aaa" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding CurrentSettings.SteamPath, UpdateSourceTrigger=PropertyChanged}" Padding="10" Background="#111"/>
-                        
-                        <TextBlock Text="Launch Options (Manual)" Foreground="#aaa" Margin="0,15,0,5"/>
-                        <TextBox Text="{Binding CurrentSettings.LaunchArgs, UpdateSourceTrigger=PropertyChanged}" Padding="10" Background="#111"/>
-                    </StackPanel>
-                </Border>
+                <TextBlock Text="Settings" FontSize="22" FontWeight="Bold" Foreground="White" Margin="4,0,0,20"/>
+                <RadioButton Content="⚙  General" IsChecked="True" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="GeneralSection"/>
+                <RadioButton Content="🎮  Game" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="GameSection"/>
+                <RadioButton Content="🖥  Graphics" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="GraphicsSection"/>
+                <RadioButton Content="🌐  Network" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="NetworkSection"/>
+                <RadioButton Content="⚡  Advanced" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="AdvancedSection"/>
+                <RadioButton Content="🔧  Launcher" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="LauncherSection"/>
+                <RadioButton Content="⌨  Binds" GroupName="SettingsNav" Style="{StaticResource CategoryButtonStyle}" Click="Category_Click" Tag="BindsSection"/>
 
-                <!-- LAUNCH OPTIONS HEADER -->
-                <TextBlock Text="LAUNCH OPTIONS" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,10,0,10"/>
-                <Separator Background="#333" Margin="0,0,0,20"/>
+                <!-- Reset at bottom -->
+                <Button Content="Reset All" Command="{Binding ResetCommand}" Style="{StaticResource ModernButtonStyle}" Background="#d32f2f" Margin="0,30,0,0" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+        </Border>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+        <!-- Content -->
+        <ScrollViewer x:Name="ContentScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" Style="{StaticResource ModernScrollViewerStyle}" Padding="30,20,30,20">
+            <StackPanel>
 
-                    <!-- Column 1: System & Priority -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="System &amp; Priority" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <!-- Grid for aligned items -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
+                <!-- ═══ GENERAL ═══ -->
+                <StackPanel x:Name="GeneralSection" Margin="0,0,0,30">
+                    <TextBlock Text="General" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
 
-                            <TextBlock Grid.Row="0" Text="Skip Intro (-novid)" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.SkipIntro}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                    <!-- TF2 Path -->
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="TF2 Installation Path" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Path to your tf folder (e.g. .../Team Fortress 2/tf)" Style="{StaticResource DescStyle}"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Browse" Command="{Binding BrowseFolderCommand}" Style="{StaticResource ModernButtonStyle}" Padding="14,8" Margin="8,0,0,0"/>
+                                <TextBox Text="{Binding CurrentSettings.SteamPath, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding PathValidationMessage}" FontSize="11" Margin="0,4,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#ef5350"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPathValid}" Value="True">
+                                                <Setter Property="Foreground" Value="#66bb6a"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
 
-                            <TextBlock Grid.Row="1" Text="Disable Joystick (-nojoy)" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableJoystick}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                    <!-- Display Mode -->
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Display Mode" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="How TF2 renders its window" Style="{StaticResource DescStyle}"/>
+                            <ComboBox ItemsSource="{Binding DisplayModes}" SelectedItem="{Binding DisplayMode}" Width="220" HorizontalAlignment="Left" Margin="0,0,0,10"/>
 
-                            <TextBlock Grid.Row="2" Text="High CPU Priority (-high)" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.HighPriority}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <!-- Threads + Caution -->
-                            <!-- Threads -->
-                            <StackPanel Grid.Row="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="CPU Cores (-threads)" Style="{StaticResource LabelStyle}"/>
-                                <TextBlock Text="Caution!" Foreground="#88FFA500" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" ToolTip="Incorrect values can cause instability"/>
-                            </StackPanel>
-                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CurrentSettings.Threads}" Width="50" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="4" Text="DirectX Level" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Row="4" Grid.Column="1" Width="60" ItemsSource="{StaticResource DxLevels}" SelectedValue="{Binding CurrentSettings.DxLevel}" HorizontalAlignment="Right"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Column 2: Window & Display -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Window &amp; Display" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Text="Fullscreen" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.Fullscreen}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="1" Text="Windowed" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.Windowed}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="2" Text="Borderless" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.Borderless}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="3" Text="Width" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CurrentSettings.Width}" Width="60" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="4" Text="Height" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding CurrentSettings.Height}" Width="60" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="5" Text="Refresh Rate" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding CurrentSettings.RefreshRate}" Width="60" TextAlignment="Center" HorizontalAlignment="Right"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Column 3: Advanced Flags -->
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="Advanced Flags" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
-                            
-                            <TextBlock Grid.Row="0" Text="Disable Sound" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableSound}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="1" Text="Disable HLTV" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableHltv}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="2" Text="Soft Particles Off" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.SoftParticlesOff}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="3" Text="Disable Steam Controller" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableSteamController}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-
-                <!-- AUTOEXEC HEADER -->
-                <TextBlock Text="AUTOEXEC (IN-GAME)" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,40,0,10"/>
-                <Separator Background="#333" Margin="0,0,0,20"/>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Column 1: Graphics & Performance -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Graphics &amp; Performance" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/> <!-- Sliders need auto height -->
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Text="VSync" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.VSync}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <TextBlock Grid.Row="1" Text="Anti-Aliasing" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Row="1" Grid.Column="1" Width="60" ItemsSource="{StaticResource AntiAliasingLevels}" SelectedValue="{Binding CurrentSettings.AntiAliasing}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="2" Text="Anisotropic" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Row="2" Grid.Column="1" Width="60" ItemsSource="{StaticResource AnisoLevels}" SelectedValue="{Binding CurrentSettings.AnisotropicFiltering}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="3" Text="Bloom" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding CurrentSettings.Bloom}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <!-- Sliders spanning full width -->
-                            <StackPanel Grid.Row="4" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Motion Blur Strength" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=BlurSlider, Path=Value, StringFormat=N2}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="BlurSlider" Minimum="0" Maximum="1" Value="{Binding CurrentSettings.MotionBlurStrength}" TickFrequency="0.1"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="5" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Model LOD" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=LodSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="LodSlider" Minimum="-1" Maximum="2" Value="{Binding CurrentSettings.ModelLod}" TickFrequency="1"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <TextBlock Grid.Row="7" Text="Ragdolls" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="7" Grid.Column="1" IsChecked="{Binding CurrentSettings.Ragdolls}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="8" Text="Gibs (Alien)" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="8" Grid.Column="1" IsChecked="{Binding CurrentSettings.AlienGibs}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="9" Text="Gibs (Human)" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="9" Grid.Column="1" IsChecked="{Binding CurrentSettings.HumanGibs}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <StackPanel Grid.Row="10" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Detail Distance" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=DetailSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="DetailSlider" Minimum="0" Maximum="2000" Value="{Binding CurrentSettings.DetailDistance}" TickFrequency="100"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Column 2: Gameplay -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Gameplay" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <StackPanel Grid.Row="0" Margin="0,0,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="FOV" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=FovSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="FovSlider" Minimum="70" Maximum="90" Value="{Binding CurrentSettings.Fov}" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Viewmodel FOV" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=VmFovSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="VmFovSlider" Minimum="54" Maximum="110" Value="{Binding CurrentSettings.ViewmodelFov}" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <TextBlock Grid.Row="2" Text="Draw Viewmodel" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.DrawViewmodel}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="3" Text="Raw Input" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding CurrentSettings.RawInput}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <StackPanel Grid.Row="4" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Sensitivity" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=SensSlider, Path=Value, StringFormat=N1}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="SensSlider" Minimum="0.1" Maximum="20" Value="{Binding CurrentSettings.MouseSensitivity}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <TextBlock Grid.Row="5" Text="Auto Reload" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding CurrentSettings.AutoReload}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="6" Text="Hit Sound" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="6" Grid.Column="1" IsChecked="{Binding CurrentSettings.HitSound}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="7" Text="Damage Numbers" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="7" Grid.Column="1" IsChecked="{Binding CurrentSettings.DamageNumbers}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <StackPanel Grid.Row="8" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Killstreak Glow" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=GlowSlider, Path=Value, StringFormat=N1}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="GlowSlider" Minimum="0" Maximum="10" Value="{Binding CurrentSettings.KillstreakGlow}" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Column 3: Interface & Pro -->
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="Interface" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <Grid>
-                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                             <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="Auto"/> <!-- Pro/Comp Header -->
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Text="Net Graph" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.NetGraph}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            
-                            <StackPanel Grid.Row="1" Margin="0,5,0,5" Grid.ColumnSpan="2">
-                                <TextBlock Text="Chat Time" Style="{StaticResource LabelStyle}"/>
-                                <DockPanel>
-                                    <TextBlock Text="{Binding ElementName=ChatSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
-                                    <Slider x:Name="ChatSlider" Minimum="0" Maximum="20" Value="{Binding CurrentSettings.ChatMessageTime}" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                                </DockPanel>
-                            </StackPanel>
-
-                            <TextBlock Grid.Row="2" Text="Draw HUD" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.DrawHud}" Style="{StaticResource ToggleSwitchStyle}" ToolTip="Sv_Pure Limited (May not work on Valve servers)" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="3" Text="Pro / Competitive" Style="{StaticResource SectionHeaderStyle}" Margin="0,20,0,10" Grid.ColumnSpan="2"/>
-                            
-                            <TextBlock Grid.Row="4" Text="Interp" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding CurrentSettings.Interp, StringFormat=N6}" Width="80" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="5" Text="Interpolate" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding CurrentSettings.Interpolate}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="6" Text="Rate" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding CurrentSettings.Rate}" Width="80" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="7" Text="CmdRate" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding CurrentSettings.CmdRate}" Width="60" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="8" Text="UpdateRate" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding CurrentSettings.UpdateRate}" Width="60" TextAlignment="Center" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="9" Text="Queue Mode" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Row="9" Grid.Column="1" Width="60" ItemsSource="{StaticResource QueueModes}" SelectedValue="{Binding CurrentSettings.QueueMode}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="10" Text="Disable Eyes" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="10" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableEyes}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="11" Text="Disable Flex" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="11" Grid.Column="1" IsChecked="{Binding CurrentSettings.DisableFlex}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-
-                <!-- EXTRAS (Advanced) -->
-                <Expander Header="EXTRAS" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,20,0,10" IsExpanded="False">
-                   <Grid Margin="0,10,0,0" TextElement.FontWeight="Normal">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Column 1 -->
-                        <StackPanel Grid.Column="0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                </Grid.RowDefinitions>
-                                
-                                <TextBlock Grid.Row="0" Text="Show Backpack Rarities" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.ShowBackpackRarities}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                                <TextBlock Grid.Row="1" Text="Show In-Game Notifications" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.ShowIngameNotifications}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                                <TextBlock Grid.Row="2" Text="Show Plugin Messages" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.ShowPluginMessages}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Width" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <TextBox Text="{Binding CurrentSettings.Width}" TextAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Height" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <TextBox Text="{Binding CurrentSettings.Height}" TextAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Refresh Rate (Hz)" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <TextBox Text="{Binding CurrentSettings.RefreshRate}" TextAlignment="Center"/>
+                                </StackPanel>
                             </Grid>
                         </StackPanel>
+                    </Border>
 
-                        <!-- Column 2 -->
-                        <StackPanel Grid.Column="2">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                </Grid.RowDefinitions>
-                                
-                                <TextBlock Grid.Row="0" Text="Show Help" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.ShowHelp}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                    <!-- Launch Args (raw) -->
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Launch Options (Raw)" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="These are synced automatically from the toggles below. You can also type custom flags here." Style="{StaticResource DescStyle}"/>
+                            <TextBox Text="{Binding CurrentSettings.LaunchArgs, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="12"/>
+                        </StackPanel>
+                    </Border>
 
-                                <TextBlock Grid.Row="1" Text="Ping as Text" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.ScoreboardPingText}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                    <!-- Launch Behavior toggles -->
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Launch Behavior" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.SkipIntro}" Content="Skip Intro Video" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Skips the Valve logo animation when TF2 starts (-novid)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableJoystick}" Content="Disable Joystick" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Frees up memory if you don't use a controller (-nojoy)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.NoTextureStream}" Content="Disable Texture Streaming" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Pre-loads all textures at once instead of streaming them. Useful on systems with fast storage (-no_texture_stream)" Style="{StaticResource DescStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
-                                <TextBlock Grid.Row="2" Text="Spec Mode" Style="{StaticResource LabelStyle}"/>
-                                <ComboBox Grid.Row="2" Grid.Column="1" Width="60" ItemsSource="{StaticResource SpecModes}" SelectedValue="{Binding CurrentSettings.SpectatorMode}" HorizontalAlignment="Right"/>
+                <!-- ═══ GAME ═══ -->
+                <StackPanel x:Name="GameSection" Margin="0,0,0,30">
+                    <TextBlock Text="Game" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
+
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Field of View" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Game FOV" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,8">
+                                <TextBlock Text="{Binding ElementName=FovSlider, Path=Value}" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="FovSlider" Minimum="70" Maximum="90" Value="{Binding CurrentSettings.Fov}" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                            </DockPanel>
+                            <TextBlock Text="Viewmodel FOV" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,4">
+                                <TextBlock Text="{Binding ElementName=VmFovSlider, Path=Value}" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="VmFovSlider" Minimum="54" Maximum="110" Value="{Binding CurrentSettings.ViewmodelFov}" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                            </DockPanel>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DrawViewmodel}" Content="Draw Viewmodel" Style="{StaticResource ToggleSwitchStyle}" Margin="0,4,0,2"/>
+                            <TextBlock Text="Shows your weapon model on screen" Style="{StaticResource DescStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Input" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.RawInput}" Content="Raw Input" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Bypasses OS mouse acceleration for precise aiming" Style="{StaticResource DescStyle}"/>
+                            <TextBlock Text="Mouse Sensitivity" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,4">
+                                <TextBlock Text="{Binding ElementName=SensSlider, Path=Value, StringFormat=N1}" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="SensSlider" Minimum="0.1" Maximum="20" Value="{Binding CurrentSettings.MouseSensitivity}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Gameplay" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.AutoReload}" Content="Auto Reload" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Automatically reloads weapons when not firing" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.HitSound}" Content="Hit Sound" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Plays a 'ding' sound when you deal damage" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DamageNumbers}" Content="Damage Numbers" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows floating damage numbers on hit" Style="{StaticResource DescStyle}"/>
+                            <TextBlock Text="Killstreak Glow" Foreground="#aaa" FontSize="12" Margin="0,4,0,0"/>
+                            <DockPanel Margin="0,2,0,0">
+                                <TextBlock Text="{Binding ElementName=GlowSlider, Path=Value, StringFormat=N1}" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="GlowSlider" Minimum="0" Maximum="10" Value="{Binding CurrentSettings.KillstreakGlow}" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ═══ GRAPHICS ═══ -->
+                <StackPanel x:Name="GraphicsSection" Margin="0,0,0,30">
+                    <TextBlock Text="Graphics" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
+
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Rendering" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.VSync}" Content="VSync" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Synchronizes frame rate with monitor refresh — prevents tearing but adds input lag" Style="{StaticResource DescStyle}"/>
+
+                            <Grid Margin="0,4,0,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Anti-Aliasing" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <ComboBox ItemsSource="{StaticResource AntiAliasingLevels}" SelectedValue="{Binding CurrentSettings.AntiAliasing}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Anisotropic" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <ComboBox ItemsSource="{StaticResource AnisoLevels}" SelectedValue="{Binding CurrentSettings.AnisotropicFiltering}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="DirectX Level" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/>
+                                    <ComboBox ItemsSource="{StaticResource DxLevels}" SelectedValue="{Binding CurrentSettings.DxLevel}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <CheckBox IsChecked="{Binding CurrentSettings.Bloom}" Content="Bloom" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Glow effect around bright areas" Style="{StaticResource DescStyle}"/>
+
+                            <TextBlock Text="Motion Blur" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,4">
+                                <TextBlock Text="{Binding ElementName=BlurSlider, Path=Value, StringFormat=N2}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="BlurSlider" Minimum="0" Maximum="1" Value="{Binding CurrentSettings.MotionBlurStrength}" TickFrequency="0.1"/>
+                            </DockPanel>
+
+                            <TextBlock Text="Model LOD" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,4">
+                                <TextBlock Text="{Binding ElementName=LodSlider, Path=Value}" DockPanel.Dock="Right" Width="35" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="LodSlider" Minimum="-1" Maximum="2" Value="{Binding CurrentSettings.ModelLod}" TickFrequency="1"/>
+                            </DockPanel>
+
+                            <TextBlock Text="Detail Distance" Foreground="#aaa" FontSize="12"/>
+                            <DockPanel Margin="0,2,0,0">
+                                <TextBlock Text="{Binding ElementName=DetailSlider, Path=Value}" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="DetailSlider" Minimum="0" Maximum="2000" Value="{Binding CurrentSettings.DetailDistance}" TickFrequency="100"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Effects" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.Ragdolls}" Content="Ragdolls" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Physics-based death animations" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.AlienGibs}" Content="Alien Gibs" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Alien-themed body parts on explosion kills" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.HumanGibs}" Content="Human Gibs" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Human body parts on explosion kills" Style="{StaticResource DescStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ═══ NETWORK ═══ -->
+                <StackPanel x:Name="NetworkSection" Margin="0,0,0,30">
+                    <TextBlock Text="Network" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Network Rates" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="Fine-tune network interpolation for competitive play. Default values work well for most players." Style="{StaticResource DescStyle}"/>
+                            <Grid Margin="0,4,0,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0"><TextBlock Text="Interp (cl_interp)" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/><TextBox Text="{Binding CurrentSettings.Interp, StringFormat=N6}" TextAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Rate" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/><TextBox Text="{Binding CurrentSettings.Rate}" TextAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="4"><TextBlock Text="Queue Mode" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/><ComboBox ItemsSource="{StaticResource QueueModes}" SelectedValue="{Binding CurrentSettings.QueueMode}"/></StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0"><TextBlock Text="CmdRate" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/><TextBox Text="{Binding CurrentSettings.CmdRate}" TextAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="UpdateRate" Foreground="#aaa" FontSize="12" Margin="0,0,0,2"/><TextBox Text="{Binding CurrentSettings.UpdateRate}" TextAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <CheckBox IsChecked="{Binding CurrentSettings.Interpolate}" Content="Interpolate" Style="{StaticResource ToggleSwitchStyle}" Margin="0,8,0,0"/>
+                                </StackPanel>
                             </Grid>
                         </StackPanel>
+                    </Border>
+                </StackPanel>
 
-                        <!-- Column 3 -->
-                        <StackPanel Grid.Column="4">
-                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                </Grid.RowDefinitions>
-                                
-                                <TextBlock Grid.Row="0" Text="New Impact Effects" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding CurrentSettings.NewImpactEffects}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                <!-- ═══ ADVANCED ═══ -->
+                <StackPanel x:Name="AdvancedSection" Margin="0,0,0,30">
+                    <TextBlock Text="Advanced" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
 
-                                <TextBlock Grid.Row="1" Text="Draw Tracers (1st Person)" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CurrentSettings.DrawTracersFirstPerson}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                                <TextBlock Grid.Row="2" Text="Colorblind Assist" Style="{StaticResource LabelStyle}"/>
-                                <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding CurrentSettings.ColorblindAssist}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                            </Grid>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Performance Tweaks" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.HighPriority}" Content="High CPU Priority" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Runs TF2 with high process priority — may cause system instability (-high)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableReplay}" Content="Disable Replay System" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Disables the replay system to save memory (-noreplay)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.SoftParticlesOff}" Content="Disable Soft Particles" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Disables soft particle rendering for extra FPS (-softparticlesdefaultoff)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableEyes}" Content="Disable Eyes" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Disables eye rendering on player models for performance" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableFlex}" Content="Disable Facial Flex" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Disables facial animations on player models" Style="{StaticResource DescStyle}"/>
                         </StackPanel>
-                   </Grid>
-                </Expander>
+                    </Border>
 
-                <!-- LAUNCHER CONFIGURATION HEADER -->
-                <TextBlock Text="LAUNCHER CONFIGURATION" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,40,0,10"/>
-                <Separator Background="#333" Margin="0,0,0,20"/>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Audio &amp; Misc" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableSound}" Content="Disable Sound" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Completely disables audio output (-nosound)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableHltv}" Content="Disable HLTV" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Disables HLTV/SourceTV client (-nohltv)" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DisableSteamController}" Content="Disable Steam Controller" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Prevents Steam controller input from interfering" Style="{StaticResource DescStyle}"/>
+                        </StackPanel>
+                    </Border>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="HUD &amp; Interface" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.NetGraph}" Content="Net Graph" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows FPS, ping, and network stats overlay" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DrawHud}" Content="Draw HUD" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Toggle the in-game HUD display" Style="{StaticResource DescStyle}"/>
+                            <TextBlock Text="Chat Display Time" Foreground="#aaa" FontSize="12" Margin="0,4,0,0"/>
+                            <DockPanel Margin="0,2,0,4">
+                                <TextBlock Text="{Binding ElementName=ChatSlider, Path=Value}" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Foreground="#aaa"/>
+                                <Slider x:Name="ChatSlider" Minimum="0" Maximum="20" Value="{Binding CurrentSettings.ChatMessageTime}" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                            </DockPanel>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ShowBackpackRarities}" Content="Show Backpack Rarities" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Color-codes items by rarity in your backpack" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ShowIngameNotifications}" Content="In-Game Notifications" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Style="{StaticResource DescStyle}" Text="Shows trade and item notifications while playing"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ShowPluginMessages}" Content="Plugin Messages" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows messages from server plugins" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ShowHelp}" Content="Show Help" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows in-game help tips" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ScoreboardPingText}" Content="Ping as Text" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows ping as numbers instead of bars on the scoreboard" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.NewImpactEffects}" Content="New Impact Effects" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Uses updated bullet impact effects" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.DrawTracersFirstPerson}" Content="First-Person Tracers" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows bullet tracer lines from your weapon" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CurrentSettings.ColorblindAssist}" Content="Colorblind Assist" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Enables colorblind-friendly visual indicators" Style="{StaticResource DescStyle}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="Spectator Mode" Foreground="#aaa" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <ComboBox ItemsSource="{StaticResource SpecModes}" SelectedValue="{Binding CurrentSettings.SpectatorMode}" Width="60"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
-                    <!-- Column 1: Logging -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Logging" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
+                <!-- ═══ LAUNCHER ═══ -->
+                <StackPanel x:Name="LauncherSection" Margin="0,0,0,30">
+                    <TextBlock Text="Launcher" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
 
-                            <TextBlock Grid.Row="0" Text="Enable Debug Log" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding EnableDebugLog}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Behavior" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding MinimizeToTrayOnLaunch}" Content="Minimize to Tray on Launch" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Minimizes the launcher to system tray when TF2 starts" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding CloseToTray}" Content="Close to Tray" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Closing the window hides to tray instead of exiting" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding ShowNotifications}" Content="Show Notifications" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Shows tray notification bubbles for launcher events" Style="{StaticResource DescStyle}"/>
+                        </StackPanel>
+                    </Border>
 
-                            <TextBlock Grid.Row="1" Text="Log Level" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox Grid.Row="1" Grid.Column="1" Width="100" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding CurrentLogLevel}" HorizontalAlignment="Right"/>
+                    <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Logging" Foreground="#ccc" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox IsChecked="{Binding EnableDebugLog}" Content="Enable Debug Log" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Enables detailed logging to app_debug.log" Style="{StaticResource DescStyle}"/>
+                            <CheckBox IsChecked="{Binding AutoClearLogs}" Content="Auto-Clear Logs on Startup" Style="{StaticResource ToggleSwitchStyle}" Margin="0,0,0,2"/>
+                            <TextBlock Text="Clears old log files each time the launcher starts" Style="{StaticResource DescStyle}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="Log Level" Foreground="#aaa" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <ComboBox ItemsSource="{Binding LogLevels}" SelectedItem="{Binding CurrentLogLevel}" Width="100"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
-                            <TextBlock Grid.Row="2" Text="Auto-clear Logs on Startup" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding AutoClearLogs}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                        </Grid>
-                    </StackPanel>
+                <!-- ═══ BINDS ═══ -->
+                <StackPanel x:Name="BindsSection" Margin="0,0,0,30">
+                    <TextBlock Text="Custom Binds" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
 
-                    <!-- Column 2: Behavior -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Behavior" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition Height="30"/>
-                            </Grid.RowDefinitions>
+                    <Button Content="+ Add New Bind" Command="{Binding AddBindCommand}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Left" Margin="0,0,0,12"/>
 
-                            <TextBlock Grid.Row="0" Text="Minimize to Tray on Launch" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding MinimizeToTrayOnLaunch}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="1" Text="Close to Tray Instead of Exit" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding CloseToTray}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-
-                            <TextBlock Grid.Row="2" Text="Show Notifications" Style="{StaticResource LabelStyle}"/>
-                            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding ShowNotifications}" Style="{StaticResource ToggleSwitchStyle}" HorizontalAlignment="Right"/>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-
-                <!-- BINDS HEADER -->
-                <TextBlock Text="CUSTOM BINDS" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,40,0,10"/>
-                <Separator Background="#333" Margin="0,0,0,20"/>
-                
-                <StackPanel Margin="0,0,0,20">
-                    <Button Content="+ Add New Bind" Command="{Binding AddBindCommand}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Right" Margin="0,0,0,15"/>
-                    
                     <ItemsControl ItemsSource="{Binding CurrentSettings.Binds}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{StaticResource CardBrush}" CornerRadius="5" Padding="15" Margin="0,0,0,10">
+                                <Border Background="{StaticResource CardBrush}" CornerRadius="6" Padding="14" Margin="0,0,0,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="12"/>
                                             <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="12"/>
                                             <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="12"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        
-                                        <!-- Bind Name -->
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Name" Foreground="#777" FontSize="12" Margin="0,0,0,2"/>
-                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Background="#111" Padding="5"/>
+                                            <TextBlock Text="Name" Foreground="#666" FontSize="11" Margin="0,0,0,2"/>
+                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Background="#111" Padding="6,4"/>
                                         </StackPanel>
-
-                                        <!-- Key Selection Button -->
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Key" Foreground="#777" FontSize="12" Margin="0,0,0,2"/>
-                                            <Button Command="{Binding DataContext.StartListeningCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-                                                    CommandParameter="{Binding}"
-                                                    Width="100" Height="28" BorderThickness="0">
+                                            <TextBlock Text="Key" Foreground="#666" FontSize="11" Margin="0,0,0,2"/>
+                                            <Button Command="{Binding DataContext.StartListeningCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Width="90" Height="28" BorderThickness="0" Cursor="Hand">
                                                 <Button.Style>
                                                     <Style TargetType="Button">
                                                         <Setter Property="Background" Value="#222"/>
                                                         <Setter Property="Foreground" Value="White"/>
                                                         <Setter Property="Content" Value="{Binding Key}"/>
-                                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
                                                         <Setter Property="Template">
                                                             <Setter.Value>
                                                                 <ControlTemplate TargetType="Button">
-                                                                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="3" Padding="5" RenderTransformOrigin="0.5,0.5">
-                                                                        <Border.RenderTransform>
-                                                                            <ScaleTransform ScaleX="1" ScaleY="1"/>
-                                                                        </Border.RenderTransform>
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="6">
                                                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                     </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <EventTrigger RoutedEvent="MouseEnter">
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.05" Duration="0:0:0.1"/>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.05" Duration="0:0:0.1"/>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1"/>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </EventTrigger>
-                                                                        <EventTrigger RoutedEvent="MouseLeave">
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.0" Duration="0:0:0.1"/>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.0" Duration="0:0:0.1"/>
-                                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="1.0" Duration="0:0:0.1"/>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </EventTrigger>
-                                                                    </ControlTemplate.Triggers>
                                                                 </ControlTemplate>
                                                             </Setter.Value>
                                                         </Setter>
@@ -834,48 +608,16 @@
                                                 </Button.Style>
                                             </Button>
                                         </StackPanel>
-                                        
-                                        <!-- Command -->
                                         <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Command (Source Engine)" Foreground="#777" FontSize="12" Margin="0,0,0,2"/>
-                                            <TextBox Text="{Binding Command, UpdateSourceTrigger=PropertyChanged}" Background="#111" Padding="5"/>
+                                            <TextBlock Text="Command" Foreground="#666" FontSize="11" Margin="0,0,0,2"/>
+                                            <TextBox Text="{Binding Command, UpdateSourceTrigger=PropertyChanged}" Background="#111" Padding="6,4"/>
                                         </StackPanel>
-                                        
-                                        <!-- Remove Button -->
-                                        <Button Grid.Column="6" Content="X" 
-                                                Command="{Binding DataContext.RemoveBindCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-                                                CommandParameter="{Binding}"
-                                                Background="#d32f2f" Foreground="White" BorderThickness="0" 
-                                                Width="30" Height="30" VerticalAlignment="Bottom"
-                                                ToolTip="Remove Bind">
+                                        <Button Grid.Column="6" Content="✕" Command="{Binding DataContext.RemoveBindCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Background="#d32f2f" Foreground="White" BorderThickness="0" Width="28" Height="28" VerticalAlignment="Bottom" Cursor="Hand" ToolTip="Remove Bind">
                                             <Button.Template>
-                                                 <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="3" RenderTransformOrigin="0.5,0.5">
-                                                        <Border.RenderTransform>
-                                                            <ScaleTransform ScaleX="1" ScaleY="1"/>
-                                                        </Border.RenderTransform>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
                                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <EventTrigger RoutedEvent="MouseEnter">
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.1" Duration="0:0:0.1"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.1" Duration="0:0:0.1"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1"/>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </EventTrigger>
-                                                        <EventTrigger RoutedEvent="MouseLeave">
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.0" Duration="0:0:0.1"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.0" Duration="0:0:0.1"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="1.0" Duration="0:0:0.1"/>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </EventTrigger>
-                                                    </ControlTemplate.Triggers>
                                                 </ControlTemplate>
                                             </Button.Template>
                                         </Button>
@@ -886,9 +628,6 @@
                     </ItemsControl>
                 </StackPanel>
 
-
-                <Button Content="Reset Configuration" Command="{Binding ResetCommand}" 
-                        Style="{StaticResource ModernButtonStyle}" Background="#d32f2f" HorizontalAlignment="Right" Margin="0,40,0,20"/>
             </StackPanel>
         </ScrollViewer>
     </Grid>

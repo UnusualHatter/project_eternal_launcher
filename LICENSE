@@ -12,6 +12,14 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+Additional restriction for launcher patchers:
+The executable patcher binaries distributed with this project (including, but not
+limited to, steam_patcher.exe and pure_patcher.exe, and any renamed, repackaged,
+or derived binary forms of these patchers) are NOT licensed under the permission
+grant above. Redistribution, rehosting, sublicensing, or republishing of these
+patcher executables is strictly prohibited without prior written authorization
+from the copyright holder.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

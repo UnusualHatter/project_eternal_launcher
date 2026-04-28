@@ -16,9 +16,6 @@ public class SettingsModel : ViewModelBase
     private string _steamPath = GamePaths.DefaultTf2Path;
     private string _launchArgs = "+exec w/config.cfg +exec autoexec.cfg";
     private string _steamApiKey = string.Empty;
-    private string _backpackTfApiKey = string.Empty;
-    private string _marketplaceTfApiKey = string.Empty;
-    private string _stnTradingApiKey = string.Empty;
 
     private bool _skipIntro;
     private bool _disableJoystick;
@@ -37,6 +34,8 @@ public class SettingsModel : ViewModelBase
     private bool _disableHltv;
     private bool _softParticlesOff;
     private bool _disableSteamController;
+    private bool _noTextureStream;
+    private bool _disableReplay;
 
     private bool _vSync;
     private int _antiAliasing = 8;
@@ -76,9 +75,6 @@ public class SettingsModel : ViewModelBase
     public string SteamPath { get => _steamPath; set => SetProperty(ref _steamPath, value); }
     public string LaunchArgs { get => _launchArgs; set => SetProperty(ref _launchArgs, value); }
     public string SteamApiKey { get => _steamApiKey; set => SetProperty(ref _steamApiKey, value); }
-    public string BackpackTfApiKey { get => _backpackTfApiKey; set => SetProperty(ref _backpackTfApiKey, value); }
-    public string MarketplaceTfApiKey { get => _marketplaceTfApiKey; set => SetProperty(ref _marketplaceTfApiKey, value); }
-    public string StnTradingApiKey { get => _stnTradingApiKey; set => SetProperty(ref _stnTradingApiKey, value); }
 
     public bool SkipIntro { get => _skipIntro; set => SetProperty(ref _skipIntro, value); }
     public bool DisableJoystick { get => _disableJoystick; set => SetProperty(ref _disableJoystick, value); }
@@ -97,6 +93,8 @@ public class SettingsModel : ViewModelBase
     public bool DisableHltv { get => _disableHltv; set => SetProperty(ref _disableHltv, value); }
     public bool SoftParticlesOff { get => _softParticlesOff; set => SetProperty(ref _softParticlesOff, value); }
     public bool DisableSteamController { get => _disableSteamController; set => SetProperty(ref _disableSteamController, value); }
+    public bool NoTextureStream { get => _noTextureStream; set => SetProperty(ref _noTextureStream, value); }
+    public bool DisableReplay { get => _disableReplay; set => SetProperty(ref _disableReplay, value); }
 
     public bool VSync { get => _vSync; set => SetProperty(ref _vSync, value); }
     public int AntiAliasing { get => _antiAliasing; set => SetProperty(ref _antiAliasing, value); }

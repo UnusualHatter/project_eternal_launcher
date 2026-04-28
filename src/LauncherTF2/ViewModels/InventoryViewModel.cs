@@ -14,7 +14,6 @@ public class InventoryViewModel : ViewModelBase
     private readonly SteamDetectionService _steamDetectionService;
     private readonly SteamInventoryService _steamInventoryService;
     private readonly InventoryPricingService _pricingService;
-    private readonly SettingsService _settingsService;
     private readonly List<BackpackGridItem> _allBackpackItems = [];
 
     private readonly Dictionary<string, InventoryPricingService.PriceSnapshot> _sessionPriceCache = new(StringComparer.OrdinalIgnoreCase);
@@ -262,7 +261,6 @@ public class InventoryViewModel : ViewModelBase
         _steamDetectionService = new SteamDetectionService();
         _steamInventoryService = new SteamInventoryService();
         _pricingService = new InventoryPricingService();
-        _settingsService = new SettingsService();
 
         BackpackItems.CollectionChanged += OnBackpackItemsChanged;
 
@@ -385,14 +383,6 @@ public class InventoryViewModel : ViewModelBase
 
         await Task.Delay(200);
 
-        var settings = _settingsService.GetSettings();
-        var apiKeys = new InventoryPricingService.ApiKeys
-        {
-            BackpackTfApiKey = settings.BackpackTfApiKey,
-            MarketplaceTfApiKey = settings.MarketplaceTfApiKey,
-            StnTradingApiKey = settings.StnTradingApiKey
-        };
-
         using var limiter = new SemaphoreSlim(5);
 
         var tasks = _allBackpackItems.Select(async item =>
@@ -406,7 +396,7 @@ public class InventoryViewModel : ViewModelBase
             await limiter.WaitAsync();
             try
             {
-                var snapshot = await _pricingService.GetPriceSnapshotAsync(item.Name, item.QualityName, item.TradableLabel == "Tradable", apiKeys);
+                var snapshot = await _pricingService.GetPriceSnapshotAsync(item.Name, item.QualityName, item.TradableLabel == "Tradable");
                 _sessionPriceCache[item.ItemKey] = snapshot;
                 item.PricePureLabel = $"Pure: {snapshot.PureSummary}";
             }
@@ -476,13 +466,7 @@ public class InventoryViewModel : ViewModelBase
     {
         SelectedItemStorePrices.Clear();
 
-        var settings = _settingsService.GetSettings();
-        var apiKeys = new InventoryPricingService.ApiKeys
-        {
-            BackpackTfApiKey = settings.BackpackTfApiKey,
-            MarketplaceTfApiKey = settings.MarketplaceTfApiKey,
-            StnTradingApiKey = settings.StnTradingApiKey
-        };
+
 
         var initialRows = InventoryPricingService.StoreOrder.Select(name => new StorePriceRow
         {
@@ -498,7 +482,7 @@ public class InventoryViewModel : ViewModelBase
 
         var snapshot = _sessionPriceCache.TryGetValue(item.ItemKey, out var cached)
             ? cached
-            : await _pricingService.GetPriceSnapshotAsync(item.Name, item.QualityName, item.TradableLabel == "Tradable", apiKeys);
+            : await _pricingService.GetPriceSnapshotAsync(item.Name, item.QualityName, item.TradableLabel == "Tradable");
 
         _sessionPriceCache[item.ItemKey] = snapshot;
         item.PricePureLabel = $"Pure: {snapshot.PureSummary}";
