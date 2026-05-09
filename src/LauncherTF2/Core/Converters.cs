@@ -50,6 +50,26 @@ public class StringNullOrEmptyToVisibilityConverter : IValueConverter
     }
 }
 
+/// <summary>
+/// Visible when the bound string has content; Collapsed otherwise. Mirrors
+/// <see cref="StringNullOrEmptyToVisibilityConverter"/> for the opposite case so
+/// XAML doesn't need a ConverterParameter trick.
+/// </summary>
+public class StringNotEmptyToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is string text && !string.IsNullOrWhiteSpace(text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public class InverseBooleanConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

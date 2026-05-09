@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:LauncherTF2.ViewModels"
+        xmlns:invvm="clr-namespace:LauncherTF2.ViewModels.Inventory"
         xmlns:views="clr-namespace:LauncherTF2.Views"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         mc:Ignorable="d"
@@ -13,7 +14,7 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        Icon="/Resources/Assets/logo64.png">
+        Icon="/Resources/Assets/logo64.ico">
 
 
     
@@ -25,7 +26,7 @@
         <DataTemplate DataType="{x:Type vm:HomeViewModel}">
             <views:HomeView/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:InventoryViewModel}">
+        <DataTemplate DataType="{x:Type invvm:BackpackViewModel}">
             <views:InventoryView/>
         </DataTemplate>
 

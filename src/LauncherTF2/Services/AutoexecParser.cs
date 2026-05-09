@@ -1,9 +1,15 @@
+﻿using LauncherTF2.Core;
 using LauncherTF2.Models;
 using System.IO;
 using System.Text.RegularExpressions;
 
 namespace LauncherTF2.Services;
 
+/// <summary>
+/// Reads <c>tf/cfg/autoexec.cfg</c> on startup and applies any recognised cvar
+/// values back onto <see cref="SettingsModel"/>. Unknown cvars are ignored —
+/// this keeps the parser tolerant of community configs and old launcher fields.
+/// </summary>
 public class AutoexecParser
 {
     public void LoadFromAutoexec(SettingsModel settings, string tfPath)
@@ -20,22 +26,20 @@ public class AutoexecParser
                 if (string.IsNullOrEmpty(cleanLine) || cleanLine.StartsWith("//")) continue;
 
                 var match = Regex.Match(cleanLine, @"^([a-zA-Z0-9_]+)\s+""?([^""\s]+)""?");
-                if (match.Success)
-                {
-                    string command = match.Groups[1].Value.ToLower();
-                    string valueStr = match.Groups[2].Value;
+                if (!match.Success) continue;
 
-                    ApplySetting(settings, command, valueStr);
-                }
+                string command = match.Groups[1].Value.ToLowerInvariant();
+                string valueStr = match.Groups[2].Value;
+                ApplySetting(settings, command, valueStr);
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error parsing autoexec: {ex.Message}");
+            Logger.LogWarning($"[AutoexecParser] Failed to read autoexec.cfg: {ex.Message}");
         }
     }
 
-    private void ApplySetting(SettingsModel settings, string command, string value)
+    private static void ApplySetting(SettingsModel settings, string command, string value)
     {
         bool ParseBool(string v) => v == "1";
         int ParseInt(string v) => int.TryParse(v, out int i) ? i : 0;
@@ -43,17 +47,18 @@ public class AutoexecParser
 
         switch (command)
         {
+            // Graphics
             case "mat_vsync": settings.VSync = ParseBool(value); break;
             case "mat_antialias": settings.AntiAliasing = ParseInt(value); break;
             case "mat_forceaniso": settings.AnisotropicFiltering = ParseInt(value); break;
             case "mat_disable_bloom": settings.Bloom = !ParseBool(value); break;
+            case "mat_motion_blur_strength":
             case "motion_blur_strength": settings.MotionBlurStrength = ParseDouble(value); break;
             case "r_lod": settings.ModelLod = ParseInt(value); break;
             case "cl_ragdoll_physics_enable": settings.Ragdolls = ParseBool(value); break;
-            case "violence_agibs": settings.AlienGibs = ParseBool(value); break;
-            case "violence_hgibs": settings.HumanGibs = ParseBool(value); break;
             case "cl_detaildist": settings.DetailDistance = ParseInt(value); break;
 
+            // Gameplay
             case "fov_desired": settings.Fov = ParseInt(value); break;
             case "viewmodel_fov": settings.ViewmodelFov = ParseInt(value); break;
             case "r_drawviewmodel": settings.DrawViewmodel = ParseBool(value); break;
@@ -62,20 +67,17 @@ public class AutoexecParser
             case "cl_autoreload": settings.AutoReload = ParseBool(value); break;
             case "tf_dingalingaling": settings.HitSound = ParseBool(value); break;
             case "hud_combattext": settings.DamageNumbers = ParseBool(value); break;
-            case "tf_killstreak_sheen_brightness": settings.KillstreakGlow = ParseDouble(value); break;
 
-            case "net_graph": settings.NetGraph = ParseBool(value); break;
-            case "hud_saytext_time": settings.ChatMessageTime = ParseDouble(value); break;
-            case "cl_drawhud": settings.DrawHud = ParseBool(value); break;
-
+            // Network
             case "cl_interp": settings.Interp = ParseDouble(value); break;
             case "cl_interpolate": settings.Interpolate = ParseBool(value); break;
             case "rate": settings.Rate = ParseInt(value); break;
             case "cl_cmdrate": settings.CmdRate = ParseInt(value); break;
             case "cl_updaterate": settings.UpdateRate = ParseInt(value); break;
             case "mat_queue_mode": settings.QueueMode = ParseInt(value); break;
-            case "r_eyes": settings.DisableEyes = !ParseBool(value); break;
-            case "r_flex": settings.DisableFlex = !ParseBool(value); break;
+
+            // Anything else — ignored (was likely written by an older launcher version
+            // or the user's own customisations and is now no longer surfaced in the UI)
         }
     }
 }

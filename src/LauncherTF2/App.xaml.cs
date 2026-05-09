@@ -1,5 +1,8 @@
 using System.Windows;
 using LauncherTF2.Core;
+using LauncherTF2.Models;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 
 namespace LauncherTF2;
@@ -29,8 +32,11 @@ public partial class App : Application
             return;
         }
 
-        // Boot sequence: logger → services → error handlers
-        Logger.Initialize(LogLevel.Info);
+        // Apply launcher config (auto-clear logs, log level) before the logger writes anything
+        var launcherConfig = TryLoadLauncherConfig();
+        TryAutoClearLogs(launcherConfig);
+
+        Logger.Initialize(ResolveStartupLogLevel(launcherConfig));
         ServiceLocator.Initialize();
 
         DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -82,5 +88,44 @@ public partial class App : Application
 
         _mutex?.ReleaseMutex();
         _mutex?.Dispose();
+    }
+
+    private static LauncherConfig? TryLoadLauncherConfig()
+    {
+        try
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_config.json");
+            if (!File.Exists(path)) return null;
+            return JsonSerializer.Deserialize<LauncherConfig>(File.ReadAllText(path));
+        }
+        catch
+        {
+            // Logger is not initialized yet — fall through to defaults
+            return null;
+        }
+    }
+
+    private static void TryAutoClearLogs(LauncherConfig? cfg)
+    {
+        if (cfg?.AutoClearLogs != true) return;
+        try
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var logFile = Path.Combine(baseDir, "app_debug.log");
+            var archiveDir = Path.Combine(baseDir, "logs");
+            if (File.Exists(logFile)) File.Delete(logFile);
+            if (Directory.Exists(archiveDir)) Directory.Delete(archiveDir, recursive: true);
+        }
+        catch
+        {
+            // Best-effort: logger not up yet, nothing to surface this through
+        }
+    }
+
+    private static LogLevel ResolveStartupLogLevel(LauncherConfig? cfg)
+    {
+        if (cfg == null) return LogLevel.Info;
+        if (cfg.EnableDebugLog) return LogLevel.Debug;
+        return Enum.TryParse<LogLevel>(cfg.LogLevel, ignoreCase: true, out var lvl) ? lvl : LogLevel.Info;
     }
 }

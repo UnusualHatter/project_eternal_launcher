@@ -15,7 +15,6 @@
   <ItemGroup>
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="SharpCompress" Version="0.36.0" />
   </ItemGroup>
 
@@ -34,7 +33,8 @@
 
   <ItemGroup>
     <Resource Include="..\..\resources\Assets\**\*.png" LinkBase="Resources\Assets" />
-    <Content Include="Resources\**" Exclude="Resources\Assets\**\*.png">
+    <Resource Include="..\..\resources\Assets\**\*.ico" LinkBase="Resources\Assets" />
+    <Content Include="Resources\**" Exclude="Resources\Assets\**\*.png;Resources\Assets\**\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

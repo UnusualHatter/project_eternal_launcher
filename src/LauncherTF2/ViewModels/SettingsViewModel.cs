@@ -178,7 +178,7 @@ public class SettingsViewModel : ViewModelBase
 
         if (string.IsNullOrEmpty(_currentSettings.LaunchArgs))
         {
-            _currentSettings.LaunchArgs = "+exec w/config.cfg +exec autoexec.cfg";
+            _currentSettings.LaunchArgs = "+exec autoexec.cfg";
         }
 
         _autoexecParser.LoadFromAutoexec(_currentSettings, _currentSettings.SteamPath);
@@ -503,13 +503,36 @@ public class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Rebuilds the LaunchArgs string from the current toggle/value states.
-    /// Fixed: now properly removes flags when disabled instead of leaving orphaned args.
+    /// Flags that the launcher used to write but no longer supports — when we
+    /// rebuild LaunchArgs we strip these so the string can't become stale.
+    /// </summary>
+    private static readonly string[] ObsoleteFlags =
+    {
+        "-full",                 // never a real TF2 flag — TF2 is fullscreen by default
+        "-nosound",              // dangerous: silences the game
+        "-nohltv",               // niche
+        "-no_steam_controller",  // niche, can break controller users
+        "-threads"               // deprecated in TF2 since 2017+
+    };
+
+    /// <summary>
+    /// Rebuilds <see cref="SettingsModel.LaunchArgs"/> from the current toggle states.
+    /// Custom user flags (anything we don't manage ourselves) are preserved.
     /// </summary>
     private void SyncLaunchOptions()
     {
-        var args = _currentSettings.LaunchArgs ?? "";
-        var parts = args.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var parts = (_currentSettings.LaunchArgs ?? "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+
+        // Strip obsolete flags + their values (if the next token isn't itself a flag).
+        for (int i = parts.Count - 1; i >= 0; i--)
+        {
+            if (Array.IndexOf(ObsoleteFlags, parts[i]) < 0) continue;
+            if (i + 1 < parts.Count && !parts[i + 1].StartsWith('-') && !parts[i + 1].StartsWith('+'))
+                parts.RemoveAt(i + 1);
+            parts.RemoveAt(i);
+        }
 
         void SetFlag(string flag, bool enable)
         {
@@ -530,7 +553,6 @@ public class SettingsViewModel : ViewModelBase
             {
                 if (index != -1)
                 {
-                    // Update existing value
                     if (index + 1 < parts.Count)
                         parts[index + 1] = value;
                     else
@@ -542,54 +564,71 @@ public class SettingsViewModel : ViewModelBase
                     parts.Add(value);
                 }
             }
-            else
+            else if (index != -1)
             {
-                // Remove flag and its value when disabled
-                if (index != -1)
-                {
-                    if (index + 1 < parts.Count && !parts[index + 1].StartsWith('-') && !parts[index + 1].StartsWith('+'))
-                        parts.RemoveAt(index + 1);
-                    parts.RemoveAt(index);
-                }
+                if (index + 1 < parts.Count && !parts[index + 1].StartsWith('-') && !parts[index + 1].StartsWith('+'))
+                    parts.RemoveAt(index + 1);
+                parts.RemoveAt(index);
             }
         }
+
+        // Display mode: TF2 defaults to fullscreen, so we only ever add the
+        // -windowed / -noborder pair when explicitly requested.
+        SetFlag("-windowed", _currentSettings.Windowed || _currentSettings.Borderless);
+        SetFlag("-noborder", _currentSettings.Borderless);
 
         SetFlag("-novid", _currentSettings.SkipIntro);
         SetFlag("-nojoy", _currentSettings.DisableJoystick);
         SetFlag("-high", _currentSettings.HighPriority);
-        SetFlag("-full", _currentSettings.Fullscreen);
-        SetFlag("-windowed", _currentSettings.Windowed);
-        SetFlag("-noborder", _currentSettings.Borderless);
-        SetFlag("-nosound", _currentSettings.DisableSound);
-        SetFlag("-nohltv", _currentSettings.DisableHltv);
         SetFlag("-softparticlesdefaultoff", _currentSettings.SoftParticlesOff);
-        SetFlag("-no_steam_controller", _currentSettings.DisableSteamController);
         SetFlag("-no_texture_stream", _currentSettings.NoTextureStream);
         SetFlag("-noreplay", _currentSettings.DisableReplay);
 
-        // Value flags — resolution always included, others only when non-default
         SetValueFlag("-w", _currentSettings.Width.ToString(), true);
         SetValueFlag("-h", _currentSettings.Height.ToString(), true);
         SetValueFlag("-freq", _currentSettings.RefreshRate.ToString(), _currentSettings.RefreshRate != 60);
+
+        // Always make sure +exec autoexec.cfg is present so our generated cfg runs.
+        if (!parts.Any(p => p.Equals("+exec", StringComparison.OrdinalIgnoreCase)
+                            && parts.IndexOf(p) + 1 < parts.Count
+                            && parts[parts.IndexOf(p) + 1].Equals("autoexec.cfg", StringComparison.OrdinalIgnoreCase)))
+        {
+            parts.Add("+exec");
+            parts.Add("autoexec.cfg");
+        }
 
         _currentSettings.LaunchArgs = string.Join(" ", parts);
     }
 
     #endregion
 
+    /// <summary>
+    /// Hard-resets every launcher-managed setting back to the SettingsModel defaults,
+    /// rebuilds LaunchArgs from those defaults (stripping any previously-added flags),
+    /// regenerates autoexec.cfg's managed block, and persists everything to disk.
+    /// </summary>
     private void Reset()
     {
+        // Detach during the swap so the per-property handler doesn't fire 30+ saves.
         _currentSettings.PropertyChanged -= CurrentSettings_PropertyChanged;
 
-        _settingsService.ResetSettings();
+        _settingsService.ResetSettings();           // installs a fresh SettingsModel + JSON write
         CurrentSettings = _settingsService.GetSettings();
 
-        SyncLaunchOptions();
         SyncDisplayModeFromModel();
         OnPropertyChanged(nameof(DisplayMode));
         ValidateTf2Path(_currentSettings.SteamPath);
 
+        // Rebuild LaunchArgs from the new defaults so resolution / +exec autoexec is back.
+        _isHandlingConflict = true;
+        try { SyncLaunchOptions(); } finally { _isHandlingConflict = false; }
+
+        // Commit the rebuilt LaunchArgs + force autoexec regeneration.
+        _settingsService.SaveSettings(_currentSettings);
+
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
+
+        Logger.LogInfo("[Settings] Reset all — defaults restored and persisted");
     }
 }

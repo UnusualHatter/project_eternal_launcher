@@ -159,11 +159,8 @@ public class SettingsService
         }
 
         // Clamp numeric ranges to valid bounds
-        if (settings.Threads < 1) settings.Threads = 1;
-        if (settings.Threads > 32) settings.Threads = 32;
-
-        if (settings.Fov < 75) settings.Fov = 75;
-        if (settings.Fov > 130) settings.Fov = 130;
+        if (settings.Fov < 70) settings.Fov = 70;
+        if (settings.Fov > 90) settings.Fov = 90;
 
         if (settings.ViewmodelFov < 50) settings.ViewmodelFov = 50;
         if (settings.ViewmodelFov > 90) settings.ViewmodelFov = 90;

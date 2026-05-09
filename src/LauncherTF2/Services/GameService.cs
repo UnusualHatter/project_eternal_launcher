@@ -237,9 +237,15 @@ public class GameService
         return true;
     }
 
-    // Hides the launcher window to the system tray
+    // Hides the launcher window to the system tray when enabled by launcher config
     private void MinimizeToTray()
     {
+        if (!_settingsService.GetLauncherConfig().MinimizeToTrayOnLaunch)
+        {
+            Logger.LogDebug("[Game] MinimizeToTrayOnLaunch disabled — keeping launcher visible");
+            return;
+        }
+
         var mainWindow = Application.Current?.MainWindow;
         if (mainWindow == null)
         {

@@ -15,6 +15,9 @@ public static class ServiceLocator
     public static ModManagerService ModManager { get; private set; } = null!;
     public static GameBananaEnrichmentService Enrichment { get; private set; } = null!;
     public static HomeFeedService HomeFeed { get; private set; } = null!;
+    public static SteamInventoryService SteamInventory { get; private set; } = null!;
+    public static InventoryPricingService Pricing { get; private set; } = null!;
+    public static InventoryImageCache ImageCache { get; private set; } = null!;
 
     /// <summary>
     /// Wires up all shared services. Must be called once during app startup.
@@ -27,6 +30,9 @@ public static class ServiceLocator
         ModManager = new ModManagerService(Settings);
         Enrichment = new GameBananaEnrichmentService();
         HomeFeed = new HomeFeedService();
+        SteamInventory = new SteamInventoryService();
+        Pricing = new InventoryPricingService();
+        ImageCache = new InventoryImageCache();
 
         Logger.LogInfo("[ServiceLocator] All services initialized successfully");
     }

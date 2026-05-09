@@ -4,11 +4,16 @@
              xmlns:core="clr-namespace:LauncherTF2.Core"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <core:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         <core:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <core:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <core:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter"/>
+        <core:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
 
         <!-- Colors (With Alpha/Transparency for Acrylic effect) -->
         <Color x:Key="BackgroundColor">#E618181b</Color>
@@ -185,6 +190,7 @@
 
         <Style x:Key="ModernScrollViewerStyle" TargetType="{x:Type ScrollViewer}">
             <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="core:SmoothScrollBehavior.IsEnabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ScrollViewer}">
@@ -197,7 +203,7 @@
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.Row="0" Grid.Column="0" CanContentScroll="{TemplateBinding CanContentScroll}"/>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.Row="0" Grid.Column="0" CanContentScroll="{TemplateBinding CanContentScroll}" Margin="{TemplateBinding Padding}"/>
                             <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Grid.Row="0" Value="{TemplateBinding VerticalOffset}" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Style="{StaticResource ModernScrollBarStyle}"/>
                             <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Column="0" Grid.Row="1" Orientation="Horizontal" Value="{TemplateBinding HorizontalOffset}" Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" Style="{StaticResource ModernScrollBarStyle}"/>
                         </Grid>
@@ -206,5 +212,6 @@
             </Setter>
         </Style>
 
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

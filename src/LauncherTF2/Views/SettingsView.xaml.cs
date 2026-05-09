@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LauncherTF2.Core;
 using LauncherTF2.ViewModels;
 
 namespace LauncherTF2.Views;
@@ -15,14 +16,16 @@ public partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// Scrolls the content panel to the section matching the clicked category button's Tag.
+    /// Smoothly scrolls the content panel to the section matching the clicked
+    /// category button's Tag. Uses an animated attached DP so the transition
+    /// feels intentional rather than a snap.
     /// </summary>
     private void Category_Click(object sender, RoutedEventArgs e)
     {
         if (sender is RadioButton btn && btn.Tag is string sectionName)
         {
-            var section = this.FindName(sectionName) as FrameworkElement;
-            section?.BringIntoView();
+            if (FindName(sectionName) is FrameworkElement section)
+                AnimatedScrollHelper.ScrollToElement(ContentScroller, section);
         }
     }
 

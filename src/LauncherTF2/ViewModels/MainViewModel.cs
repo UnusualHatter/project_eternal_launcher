@@ -1,4 +1,5 @@
 using LauncherTF2.Core;
+using LauncherTF2.ViewModels.Inventory;
 using System.Windows.Input;
 using System.Windows;
 
@@ -16,7 +17,7 @@ public class MainViewModel : ViewModelBase
 
     // Child ViewModels — one per tab
     public HomeViewModel HomeVM { get; }
-    public InventoryViewModel InventoryVM { get; }
+    public BackpackViewModel InventoryVM { get; }
 
     public ModsViewModel ModsVM { get; }
     public SettingsViewModel SettingsVM { get; }
@@ -53,7 +54,7 @@ public class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         HomeVM = new HomeViewModel();
-        InventoryVM = new InventoryViewModel();
+        InventoryVM = new BackpackViewModel();
 
         ModsVM = new ModsViewModel();
         SettingsVM = new SettingsViewModel();
@@ -62,7 +63,12 @@ public class MainViewModel : ViewModelBase
 
         // Tab navigation
         HomeViewCommand = new RelayCommand(o => CurrentView = HomeVM);
-        InventoryViewCommand = new RelayCommand(o => CurrentView = InventoryVM);
+        InventoryViewCommand = new RelayCommand(o =>
+        {
+            CurrentView = InventoryVM;
+            // Auto-refresh fires on every activation; the VM no-ops if items are already loaded
+            _ = InventoryVM.OnActivatedAsync();
+        });
 
         ModsViewCommand = new RelayCommand(o =>
         {

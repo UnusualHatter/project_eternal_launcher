@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System;
 using System.ComponentModel;
 using System.IO;
+using LauncherTF2.Core;
 
 namespace LauncherTF2.Views;
 
@@ -26,20 +27,20 @@ public partial class MainWindow : Window
         _mainContentControl = FindName("MainContentControl") as System.Windows.Controls.ContentControl;
         _mainContentTransform = _mainContentControl?.RenderTransform as TranslateTransform;
 
-        // Extract the app icon from the executable for tray display
+        // Load the packed logo64.ico for crisp multi-resolution tray rendering
         try
         {
-            var assembly = System.Reflection.Assembly.GetEntryAssembly();
-            if (assembly != null && File.Exists(assembly.Location))
+            var iconUri = new Uri("pack://application:,,,/Resources/Assets/logo64.ico", UriKind.Absolute);
+            var streamInfo = Application.GetResourceStream(iconUri);
+            if (streamInfo != null && _trayIcon != null)
             {
-                var appIcon = System.Drawing.Icon.ExtractAssociatedIcon(assembly.Location);
-                if (appIcon != null && _trayIcon != null)
-                    _trayIcon.Icon = appIcon;
+                using var stream = streamInfo.Stream;
+                _trayIcon.Icon = new System.Drawing.Icon(stream);
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to set tray icon: {ex.Message}");
+            Logger.LogWarning("[MainWindow] Failed to load tray icon from packed resource", ex);
         }
 
         // Use WeakEventManager to avoid leaking a strong reference from the VM back to the View
@@ -71,6 +72,9 @@ public partial class MainWindow : Window
     {
         if (_mainContentControl == null) return;
 
+        _mainContentControl.BeginAnimation(UIElement.OpacityProperty, null);
+        _mainContentTransform?.BeginAnimation(TranslateTransform.YProperty, null);
+
         var fadeOut = new DoubleAnimation(0.55, TimeSpan.FromSeconds(0.06));
         var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.16));
         var slideOut = new DoubleAnimation(10, TimeSpan.FromSeconds(0.06));
@@ -101,24 +105,38 @@ public partial class MainWindow : Window
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e) => HideToTray();
-    private void CloseButton_Click(object sender, RoutedEventArgs e) => HideToTray();
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ServiceLocator.Settings.GetLauncherConfig().CloseToTray)
+            HideToTray();
+        else
+            Application.Current.Shutdown();
+    }
 
     /// <summary>
-    /// Intercepts Alt+F4 and taskbar close — the app can only be fully
-    /// closed via the tray context menu "Exit" command.
+    /// Intercepts Alt+F4 and taskbar close. Honours the CloseToTray launcher
+    /// preference — when disabled, allows a normal shutdown instead.
     /// </summary>
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        e.Cancel = true;
-        HideToTray();
+        if (ServiceLocator.Settings.GetLauncherConfig().CloseToTray)
+        {
+            e.Cancel = true;
+            HideToTray();
+        }
     }
 
     private void HideToTray()
     {
         Hide();
-        _trayIcon?.ShowBalloonTip(
-            "Eternal TF2",
-            "O launcher continua em execução em segundo plano.",
-            Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+
+        if (_trayIcon != null && ServiceLocator.Settings.GetLauncherConfig().ShowNotifications)
+        {
+            _trayIcon.ShowBalloonTip(
+                "Eternal TF2",
+                "O launcher continua em execução em segundo plano.",
+                Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+        }
     }
 }
