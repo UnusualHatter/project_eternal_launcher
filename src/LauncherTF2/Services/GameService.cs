@@ -23,8 +23,11 @@ public class GameService
     }
 
     /// <summary>
-    /// Entry point for launching TF2. Starts the full orchestration pipeline
-    /// in the background and minimizes the launcher to the system tray.
+    /// UI entry point — called from the launcher window when the user clicks
+    /// "Launch TF2". Spawns a single elevated child process of this same exe
+    /// (with <see cref="App.LaunchTf2Flag"/>) that runs both patchers and the
+    /// full orchestration. Producing one UAC prompt named "Eternal TF2
+    /// Launcher" instead of separate prompts for each patcher.
     /// </summary>
     public bool LaunchTF2()
     {
@@ -32,7 +35,6 @@ public class GameService
         {
             Logger.LogInfo("[Game] Launch requested");
 
-            // Prevent multiple simultaneous launch attempts
             if (Interlocked.CompareExchange(ref _launchOrchestrationInProgress, 1, 0) != 0)
             {
                 Logger.LogWarning("[Game] Launch ignored — previous orchestration still running");
@@ -43,39 +45,99 @@ public class GameService
             if (settings == null)
             {
                 Logger.LogError("[Game] Cannot launch — settings are null");
+                Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
                 return false;
             }
-
-            var finalArgs = (settings.LaunchArgs ?? string.Empty).Trim();
 
             if (!IsSteamPathValid(settings.SteamPath))
                 Logger.LogWarning($"[Game] Steam path looks invalid: {settings.SteamPath}");
 
-            // Allow pure_patcher to run exactly once this session
-            NativeExecutableService.ResetSingleFlight(PurePatcherGateKey);
-
-            // The orchestration runs entirely in the background so the UI stays responsive
-            _ = Task.Run(async () =>
+            var spawned = TrySpawnElevatedHelper();
+            if (!spawned)
             {
-                try
-                {
-                    await OrchestrateSteamPatcherAndLaunch(finalArgs);
-                }
-                finally
-                {
-                    Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
-                }
-            });
+                Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
+                return false;
+            }
 
-            // Hide the launcher while the game is running
+            // The elevated helper owns the rest of the launch; release the flag
+            // immediately so the user can retry after this UI returns.
+            Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
+
             MinimizeToTray();
-
             return true;
         }
         catch (Exception ex)
         {
             Interlocked.Exchange(ref _launchOrchestrationInProgress, 0);
             Logger.LogError("[Game] Unexpected error during launch", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Elevated-helper entry. Called by <c>App</c> when it detects the
+    /// <see cref="App.LaunchTf2Flag"/> command-line argument. Runs the same
+    /// orchestration the launcher used to run directly when it was elevated.
+    /// </summary>
+    public async Task RunPatchAndLaunchSequenceAsync()
+    {
+        var settings = _settingsService.GetSettings();
+        if (settings == null)
+        {
+            Logger.LogError("[Game] (helper) Cannot run — settings are null");
+            return;
+        }
+
+        var finalArgs = (settings.LaunchArgs ?? string.Empty).Trim();
+        NativeExecutableService.ResetSingleFlight(PurePatcherGateKey);
+        await OrchestrateSteamPatcherAndLaunch(finalArgs);
+    }
+
+    /// <summary>
+    /// Re-launches this same exe with the <see cref="App.LaunchTf2Flag"/>
+    /// argument under the "runas" verb so Windows shows a UAC prompt and the
+    /// new process runs elevated. The UAC dialog reads its title from the
+    /// exe's FileDescription / Product fields (set in the csproj).
+    /// </summary>
+    private static bool TrySpawnElevatedHelper()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+            {
+                Logger.LogError($"[Game] Cannot spawn elevated helper — exe path not resolved ({exePath})");
+                return false;
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = App.LaunchTf2Flag,
+                UseShellExecute = true,   // required for the "runas" verb
+                Verb = "runas",           // triggers the UAC elevation prompt
+                WorkingDirectory = Path.GetDirectoryName(exePath) ?? string.Empty,
+            };
+
+            var proc = Process.Start(psi);
+            if (proc == null)
+            {
+                Logger.LogError("[Game] Process.Start returned null for elevated helper");
+                return false;
+            }
+
+            Logger.LogInfo($"[Game] Elevated helper spawned (PID {proc.Id})");
+            return true;
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // 1223 = ERROR_CANCELLED — user dismissed the UAC prompt.
+            Logger.LogWarning("[Game] User cancelled the UAC prompt — launch aborted");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[Game] Failed to spawn elevated helper", ex);
             return false;
         }
     }

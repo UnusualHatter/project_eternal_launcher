@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Media;
 using System;
@@ -95,13 +94,6 @@ public partial class MainWindow : Window
         }
 
         _mainContentControl.BeginAnimation(UIElement.OpacityProperty, fadeOut);
-    }
-
-    // Custom title bar drag support
-    private void TopBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ButtonState == MouseButtonState.Pressed)
-            this.DragMove();
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e) => HideToTray();

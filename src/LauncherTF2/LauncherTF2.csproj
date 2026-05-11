@@ -7,6 +7,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- Friendly name displayed by the UAC prompt and in file properties.
+         When the launcher self-elevates (Launch TF2 button), Windows reads
+         the FileDescription from the PE version info — populated from these
+         properties — and shows "Eternal TF2 Launcher" instead of the
+         raw filename. AssemblyName is left as LauncherTF2 so run.bat /
+         debugging paths keep working. -->
+    <AssemblyTitle>Eternal TF2 Launcher</AssemblyTitle>
+    <Product>Eternal TF2 Launcher</Product>
+    <Company>Eternal TF2 Launcher</Company>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>

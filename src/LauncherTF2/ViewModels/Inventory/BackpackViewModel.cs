@@ -494,9 +494,6 @@ public class BackpackViewModel : ViewModelBase, IDisposable
         if (!ChipMatch(Filters.ItemTypes, c => string.Equals(item.ItemType, c, StringComparison.OrdinalIgnoreCase)))
             return false;
 
-        if (!ChipMatch(Filters.Slots, c => string.Equals(item.Slot, c, StringComparison.OrdinalIgnoreCase)))
-            return false;
-
         if (!ChipMatch(Filters.Rarities, c => string.Equals(item.Rarity, c, StringComparison.OrdinalIgnoreCase)))
             return false;
 
@@ -515,9 +512,6 @@ public class BackpackViewModel : ViewModelBase, IDisposable
         BuildChips(Filters.ItemTypes,
             new[] { "Primary", "Secondary", "Melee", "PDA", "Cosmetic", "Taunt", "Tool", "Action", "Misc", "Crate", "Package", "Ticket", "Consumable", "Other" },
             _allItems.Select(i => i.ItemType));
-        BuildChips(Filters.Slots,
-            new[] { "Primary", "Secondary", "Melee", "PDA", "Head", "Misc", "Action", "Taunt" },
-            _allItems.Select(i => i.Slot));
         BuildChips(Filters.Qualities, Array.Empty<string>(), _allItems.Select(i => i.QualityName));
         BuildChips(Filters.Rarities, Rarities7, _allItems.Select(i => i.Rarity));
     }

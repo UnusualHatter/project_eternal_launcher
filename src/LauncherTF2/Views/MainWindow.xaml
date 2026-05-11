@@ -7,17 +7,27 @@
         xmlns:invvm="clr-namespace:LauncherTF2.ViewModels.Inventory"
         xmlns:views="clr-namespace:LauncherTF2.Views"
         xmlns:tb="http://www.hardcodet.net/taskbar"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="Eternal TF2 Launcher" Height="720" Width="1280"
         MinWidth="1280" MinHeight="720"
         WindowStartupLocation="CenterScreen"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
+        Background="{StaticResource BackgroundBrush}"
         Icon="/Resources/Assets/logo64.ico">
 
+    <!-- WindowChrome gives us a custom title bar + native rounded corners (Win11)
+         WITHOUT the AllowsTransparency=True layered-window hack, which was breaking
+         drag-and-drop (WPF doesn't support drag-drop on transparent windows). -->
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome
+            CaptionHeight="30"
+            CornerRadius="12"
+            GlassFrameThickness="0"
+            UseAeroCaptionButtons="False"
+            ResizeBorderThickness="4"
+            NonClientFrameEdges="None"/>
+    </WindowChrome.WindowChrome>
 
-    
     <Window.DataContext>
         <vm:MainViewModel/>
     </Window.DataContext>
@@ -38,21 +48,21 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Border CornerRadius="12" Background="{StaticResource BackgroundBrush}" BorderBrush="#333" BorderThickness="1">
+    <Border Background="{StaticResource BackgroundBrush}" BorderBrush="#333" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/> <!-- Top Bar -->
                 <RowDefinition Height="*"/>  <!-- Main Content -->
             </Grid.RowDefinitions>
-            
-            <!-- Custom Top Bar -->
-            <Grid Grid.Row="0" Background="#111" MouseLeftButtonDown="TopBar_MouseLeftButtonDown">
+
+            <!-- Custom Top Bar — WindowChrome handles dragging the caption area natively -->
+            <Grid Grid.Row="0" Background="#111">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="Eternal TF2" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="SemiBold" IsHitTestVisible="False"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Content="—" Width="40" Background="Transparent" Foreground="#aaa" BorderThickness="0" Click="MinimizeButton_Click"/>
                     <Button Content="X" Width="40" Background="Transparent" Foreground="#aaa" BorderThickness="0" Click="CloseButton_Click"/>
                 </StackPanel>

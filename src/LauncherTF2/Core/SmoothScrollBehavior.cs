@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -16,6 +17,7 @@ public static class SmoothScrollBehavior
     private const double SnapThreshold = 0.5;
     private static readonly object RenderLock = new();
     private static readonly Dictionary<ScrollViewer, EventHandler> RenderHandlers = new();
+    private static readonly Dictionary<ScrollViewer, ScrollBar?> CachedVerticalScrollBars = new();
 
     public static readonly DependencyProperty IsEnabledProperty =
         DependencyProperty.RegisterAttached(
@@ -157,6 +159,15 @@ public static class SmoothScrollBehavior
             return;
         }
 
+        // If the user is interacting directly with the scrollbar (dragging the thumb)
+        // or the ScrollViewer has captured the mouse, stop the smooth animation so
+        // we don't fight the user's direct input and cause the scrollbar to snap.
+        if (scrollViewer.IsMouseCaptureWithin || IsVerticalScrollBarBeingDragged(scrollViewer))
+        {
+            StopRendering(scrollViewer, handler);
+            return;
+        }
+
         var currentVertical = scrollViewer.VerticalOffset;
         var targetVertical = GetAnimatedVerticalOffset(scrollViewer);
         var nextVertical = Approach(currentVertical, targetVertical);
@@ -178,6 +189,41 @@ public static class SmoothScrollBehavior
             scrollViewer.ScrollToHorizontalOffset(targetHorizontal);
             StopRendering(scrollViewer, handler);
         }
+    }
+
+    private static bool IsVerticalScrollBarBeingDragged(ScrollViewer scrollViewer)
+    {
+        if (!CachedVerticalScrollBars.TryGetValue(scrollViewer, out var cached))
+        {
+            var found = FindVisualChild<ScrollBar>(scrollViewer, sb => sb.Orientation == Orientation.Vertical);
+            CachedVerticalScrollBars[scrollViewer] = found;
+            cached = found;
+        }
+
+        if (cached is null)
+            return false;
+
+        return cached.IsMouseCaptureWithin;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent, Func<T, bool>? predicate = null) where T : DependencyObject
+    {
+        if (parent == null)
+            return default;
+
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T t && (predicate == null || predicate(t)))
+                return t;
+
+            var found = FindVisualChild(child, predicate);
+            if (found != null)
+                return found;
+        }
+
+        return default;
     }
 
     private static void StopRendering(ScrollViewer scrollViewer, EventHandler? handler = null)

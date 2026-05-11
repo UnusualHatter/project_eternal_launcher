@@ -139,12 +139,14 @@ public class GameBananaEnrichmentService
 
     private async Task<List<(string Section, string Id)>> SearchDuckDuckGoAsync(string modName)
     {
-        var query = Uri.EscapeDataString(modName);
+        var cleaned = BuildSearchQuery(modName);
+        Logger.LogInfo($"[Enrichment] DDG query for '{modName}' → '{cleaned}'");
+
+        var query = Uri.EscapeDataString(cleaned);
         var url = string.Format(DDGSearchUrl, query);
 
         var html = await _http.GetStringAsync(url);
 
-        // Extract unique GameBanana URLs from the HTML
         var seen = new HashSet<string>();
         var results = new List<(string, string)>();
 
@@ -157,10 +159,36 @@ public class GameBananaEnrichmentService
             if (seen.Add(dedup))
                 results.Add((section, id));
 
-            if (results.Count >= 8) break; // No need to check too many
+            if (results.Count >= 8) break;
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Cleans a raw mod filename so the search query has a fighting chance of
+    /// matching the GameBanana title. Strips trailing version suffixes
+    /// (<c>_v1.0</c>, <c>_v2_3</c>), trailing 4-digit years (<c>_2024</c>),
+    /// converts underscores to spaces, and collapses whitespace.
+    /// </summary>
+    private static string BuildSearchQuery(string modName)
+    {
+        var s = modName;
+
+        // Strip trailing version suffix: _v1.0, _v2_3_4, _V1, etc.
+        s = Regex.Replace(s, @"[_-]v\d+(?:[._-]\d+)*$", "", RegexOptions.IgnoreCase);
+
+        // Strip trailing year: _2024, -2026, etc.
+        s = Regex.Replace(s, @"[_-](19|20)\d{2}$", "");
+
+        // Drop generic packaging tags
+        s = Regex.Replace(s, @"\b(final|release|fixed|patch|update)\b", "", RegexOptions.IgnoreCase);
+
+        // Separators → spaces, collapse runs of whitespace
+        s = s.Replace('_', ' ').Replace('-', ' ');
+        s = Regex.Replace(s, @"\s+", " ").Trim();
+
+        return string.IsNullOrWhiteSpace(s) ? modName : s;
     }
 
     // ──────────────────────── Step 2: GameBanana API validation ────────────

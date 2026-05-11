@@ -72,7 +72,7 @@ public static class ItemMetadataExtractor
 
     /// <summary>
     /// Derives the equip slot. Returns null for items whose slot can't be determined
-    /// so they're silently excluded from the Slot filter chip list.
+    /// so downstream views can still show the detail label without forcing a filter chip.
     /// </summary>
     public static string? ExtractSlot(string? type, string? name)
     {

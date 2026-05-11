@@ -21,7 +21,6 @@ public class InventoryFilterState : ViewModelBase
     public ObservableCollection<FilterChip> Classes { get; } = new();
     public ObservableCollection<FilterChip> Qualities { get; } = new();
     public ObservableCollection<FilterChip> ItemTypes { get; } = new();
-    public ObservableCollection<FilterChip> Slots { get; } = new();
     public ObservableCollection<FilterChip> Rarities { get; } = new();
 
     public string SearchText
@@ -62,7 +61,6 @@ public class InventoryFilterState : ViewModelBase
         !Classes.Any(c => c.IsSelected) &&
         !Qualities.Any(c => c.IsSelected) &&
         !ItemTypes.Any(c => c.IsSelected) &&
-        !Slots.Any(c => c.IsSelected) &&
         !Rarities.Any(c => c.IsSelected);
 
     public void Clear()
@@ -75,7 +73,6 @@ public class InventoryFilterState : ViewModelBase
             foreach (var c in Classes) c.IsSelected = false;
             foreach (var c in Qualities) c.IsSelected = false;
             foreach (var c in ItemTypes) c.IsSelected = false;
-            foreach (var c in Slots) c.IsSelected = false;
             foreach (var c in Rarities) c.IsSelected = false;
         }
         finally

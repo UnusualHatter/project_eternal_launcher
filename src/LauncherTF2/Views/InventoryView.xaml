@@ -182,13 +182,6 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
 
-                            <TextBlock Text="SLOT" Style="{StaticResource FilterLabelStyle}"/>
-                            <ItemsControl ItemsSource="{Binding Filters.Slots}" ItemTemplate="{StaticResource FilterChipTemplate}" Margin="0,0,0,12">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-
                             <TextBlock Text="QUALITY" Style="{StaticResource FilterLabelStyle}"/>
                             <ItemsControl ItemsSource="{Binding Filters.Qualities}" ItemTemplate="{StaticResource FilterChipTemplate}" Margin="0,0,0,12">
                                 <ItemsControl.ItemsPanel>
@@ -211,9 +204,10 @@
 
             <!-- Item grid + overlays -->
             <Grid Grid.Column="1">
-                <ScrollViewer Style="{StaticResource ModernScrollViewerStyle}"
-                              VerticalScrollBarVisibility="Auto"
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
+                              CanContentScroll="False"
+                              Style="{StaticResource ModernScrollViewerStyle}"
                               Padding="12,12,4,12">
                     <ItemsControl ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ItemCardTemplate}">
                         <ItemsControl.Style>

@@ -1,6 +1,7 @@
 using System.Windows;
 using LauncherTF2.Core;
 using LauncherTF2.Models;
+using LauncherTF2.Services;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -9,54 +10,118 @@ namespace LauncherTF2;
 
 public partial class App : Application
 {
-    private const string MutexName = "ProjectEternalLauncher_Mutex";
+    /// <summary>
+    /// Command-line flag the launcher passes to itself when self-elevating for
+    /// the game launch flow. The elevated child detects this flag and runs the
+    /// patchers + TF2 orchestration without showing the UI.
+    /// </summary>
+    public const string LaunchTf2Flag = "--launch-tf2";
+
+    private const string UiMutexName = "ProjectEternalLauncher_Mutex";
     private Mutex? _mutex;
+    private bool _isElevatedLauncherChild;
 
     public App()
     {
-        // Single-instance guard — prevents multiple launchers from running
-        _mutex = new Mutex(false, MutexName);
+        var args = Environment.GetCommandLineArgs();
+        _isElevatedLauncherChild = args.Any(a => string.Equals(a, LaunchTf2Flag, StringComparison.OrdinalIgnoreCase));
 
-        if (!_mutex.WaitOne(0, false))
+        // The elevated helper child skips the UI mutex (the UI instance owns it)
+        // and runs the game launch flow as a one-shot. No single-instance guard
+        // because the user might restart the UI between launches.
+        if (!_isElevatedLauncherChild)
         {
-            MessageBox.Show(
-                "Project Eternal Launcher já está em execução.\n\nPor favor, feche a instância atual antes de abrir outra.",
-                "Launcher Já em Execução",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
+            _mutex = new Mutex(false, UiMutexName);
+            if (!_mutex.WaitOne(0, false))
+            {
+                MessageBox.Show(
+                    "Project Eternal Launcher já está em execução.\n\nPor favor, feche a instância atual antes de abrir outra.",
+                    "Launcher Já em Execução",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
 
-            _mutex.Dispose();
-            _mutex = null;
-            Current.Shutdown();
-            return;
+                _mutex.Dispose();
+                _mutex = null;
+                Current.Shutdown();
+                return;
+            }
         }
 
-        // Apply launcher config (auto-clear logs, log level) before the logger writes anything
         var launcherConfig = TryLoadLauncherConfig();
-        TryAutoClearLogs(launcherConfig);
+        if (!_isElevatedLauncherChild)
+            TryAutoClearLogs(launcherConfig);
 
         Logger.Initialize(ResolveStartupLogLevel(launcherConfig));
+
         ServiceLocator.Initialize();
 
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         Exit += App_Exit;
 
+        if (_isElevatedLauncherChild)
+        {
+            Logger.LogInfo("[App] Elevated helper child started — running game launch orchestration");
+            RunElevatedLaunchAndExit();
+            return;
+        }
+
         Logger.LogInfo("[App] Startup complete");
     }
 
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // Elevated child runs without a UI; nothing to show.
+        if (_isElevatedLauncherChild) return;
+
+        // Normal UI startup — StartupUri was removed from App.xaml so we create
+        // the window manually after services are initialized.
+        var mainWindow = new Views.MainWindow();
+        MainWindow = mainWindow;
+        mainWindow.Show();
+    }
+
     /// <summary>
-    /// Global exception handler — logs the crash, shows a user-friendly dialog,
-    /// and writes a crash_log.txt for post-mortem analysis.
+    /// Elevated-helper entry. Runs the full patcher + TF2 launch sequence in the
+    /// background, then shuts the helper process down when the orchestration
+    /// completes (or fails).
     /// </summary>
+    private void RunElevatedLaunchAndExit()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ServiceLocator.Game.RunPatchAndLaunchSequenceAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[App] Elevated launch orchestration crashed", ex);
+            }
+            finally
+            {
+                Logger.LogInfo("[App] Elevated helper exiting");
+                _ = Dispatcher.BeginInvoke(() => Current?.Shutdown());
+            }
+        });
+    }
+
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         Logger.LogError("[App] Unhandled exception caught", e.Exception);
 
+        // The elevated helper has no UI to surface errors through; just log and exit.
+        if (_isElevatedLauncherChild)
+        {
+            e.Handled = !IsFatalException(e.Exception);
+            return;
+        }
+
         string errorMsg = $"An unhandled exception occurred: {e.Exception.Message}\n\nStack Trace:\n{e.Exception.StackTrace}";
         MessageBox.Show(errorMsg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 
-        // Write a standalone crash log for debugging outside the normal log rotation
         try
         {
             var crashLogPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_log.txt");
@@ -68,12 +133,9 @@ public partial class App : Application
             Logger.LogError("[App] Failed to write crash log", ex);
         }
 
-        // Swallow recoverable exceptions so the app stays alive — fatal ones
-        // (OOM, stack overflow, etc.) pass through and terminate the process
         e.Handled = !IsFatalException(e.Exception);
     }
 
-    // These exceptions mean the runtime is in an unrecoverable state
     private static bool IsFatalException(Exception ex)
     {
         return ex is OutOfMemoryException
@@ -85,7 +147,6 @@ public partial class App : Application
     private void App_Exit(object sender, ExitEventArgs e)
     {
         Logger.LogInfo("[App] Shutting down — releasing resources");
-
         _mutex?.ReleaseMutex();
         _mutex?.Dispose();
     }
@@ -100,7 +161,6 @@ public partial class App : Application
         }
         catch
         {
-            // Logger is not initialized yet — fall through to defaults
             return null;
         }
     }
@@ -118,7 +178,7 @@ public partial class App : Application
         }
         catch
         {
-            // Best-effort: logger not up yet, nothing to surface this through
+            // Best-effort: logger not up yet
         }
     }
 

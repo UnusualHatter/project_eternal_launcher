@@ -1,279 +1,259 @@
 # CLAUDE.md — Project Eternal Launcher Operations Manual
 
-## 1. EXECUTABLE COMMANDS
+This file is the internal working manual for the launcher branch currently in the workspace. It should describe the code as it exists now, not the earlier architecture notes that mention a separate pricing backend or a fully-elevated launcher.
 
-### Build & Compile
+## 1. What Exists Today
+
+Project Eternal is a WPF launcher for Team Fortress 2 with four active product areas:
+
+1. Launch orchestration (via a single self-elevated child process).
+2. Configuration and config-file generation.
+3. Mod library management and enrichment.
+4. Steam inventory browsing with direct pricing lookups.
+
+The current codebase keeps those responsibilities in the launcher process itself. There is no `PricingAggregator` project in this branch.
+
+### Current entry points
+
+- `src/LauncherTF2/App.xaml.cs` — initializes the app, owns the single-instance mutex, branches between **UI mode** and **elevated helper mode** based on the `--launch-tf2` command-line flag.
+- `src/LauncherTF2/Core/ServiceLocator.cs` — wires the shared services.
+- `src/LauncherTF2/ViewModels/MainViewModel.cs` — owns the tab shells and global commands.
+- `src/LauncherTF2/Services/GameService.cs` — drives the launch pipeline; in the UI process it spawns the elevated helper, in the helper it runs the actual orchestration.
+
+## 2. Build, Run, and Verify
+
+### Recommended commands
+
 ```powershell
-# Full solution build (Debug)
 dotnet build project_eternal_launcher-main.sln -c Debug
-
-# Full solution build (Release)
-dotnet build project_eternal_launcher-main.sln -c Release
-
-# Build launcher only
 dotnet build src/LauncherTF2/LauncherTF2.csproj -c Debug
-
-# Publish launcher
-dotnet publish src/LauncherTF2/LauncherTF2.csproj -c Release -o ./publish/launcher
-```
-
-### Run & Test
-```powershell
-# Run PowerShell build script
-./scripts/build.ps1
-
-# Run launcher
-./scripts/start.bat
-
-# Run launcher via dotnet (development)
 dotnet run --project src/LauncherTF2/LauncherTF2.csproj
 ```
 
-### Watch Mode
+Or:
+
 ```powershell
-# Launcher: live rebuild on file change
-dotnet watch run --project src/LauncherTF2/LauncherTF2.csproj
+scripts\build.ps1
+scripts\start.bat
 ```
 
----
+### Notes
 
-## 2. CODEBASE MAP
+- The launcher targets `net8.0-windows`.
+- Use the `src/LauncherTF2/LauncherTF2.csproj` path, not the older root-level path that still appears in some notes.
+- The launcher manifest is `asInvoker` — opening the launcher does **not** prompt UAC. UAC only appears when the user clicks "Launch TF2".
 
-### Directory Structure
-```
-project_eternal_launcher/
-├─ src/LauncherTF2/                 [WPF Desktop App — .NET 8 x64]
-│  ├─ App.xaml(.cs)                 Entry point, single-instance guard, exception handler
-│  ├─ Core/                         Infrastructure
-│  │  ├─ ServiceLocator.cs          Composition root (all services initialized here)
-│  │  ├─ Logger.cs                  10 MB rotating file log → app_debug.log
-│  │  ├─ ViewModelBase.cs           MVVM base class
-│  │  ├─ RelayCommand.cs            ICommand implementation
-│  │  └─ AsyncRelayCommand.cs       Async ICommand wrapper
-│  ├─ Models/                       Data structures
-│  │  ├─ SettingsModel.cs           Steam path, launch args, etc.
-│  │  ├─ LauncherConfig.cs          UI preferences
-│  │  ├─ ModModel.cs                Mod enable/disable state
-│  │  └─ BindModel.cs               Binding adapters
-│  ├─ Services/                     Business logic
-│  │  ├─ GameService.cs             Orchestrates TF2 launch (Steam → pure_patcher)
-│  │  ├─ SettingsService.cs         Loads/saves settings.json
-│  │  ├─ ModManagerService.cs       Scans {tf/custom} → toggles via filesystem
-│  │  ├─ SteamDetectionService.cs   Finds Steam/TF2 paths
-│  │  ├─ InventoryPricingService.cs Queries prices.tf + Steam Market directly
-│  │  ├─ AutoexecWriter.cs          Generates autoexec.cfg
-│  │  ├─ AutoexecParser.cs          Reads existing autoexec.cfg
-│  │  └─ [others]                   SteamInventoryService, NativeExecutableService, etc.
-│  ├─ ViewModels/                   MVVM ViewModel layer
-│  │  ├─ MainViewModel.cs           Master orchestrator
-│  │  ├─ HomeViewModel.cs           Launch + settings tab
-│  │  ├─ ModsViewModel.cs           Mod manager UI
-│  │  ├─ InventoryViewModel.cs      Pricing display
-│  │  ├─ SettingsViewModel.cs       Config editor
+## 3. Real Runtime Architecture
 
-│  ├─ Views/                        XAML UI definitions
-│  │  ├─ MainWindow.xaml            Root window + tab control
-│  │  ├─ HomeView.xaml              Launch, preset manager
-│  │  ├─ ModsView.xaml              Mod list grid
-│  │  ├─ InventoryView.xaml         Pricing grid + filters
-│  │  ├─ SettingsView.xaml          Config form
-│  │  └─ ConfirmDialog.xaml         Reusable confirmation dialog
-│  ├─ native/                       **DO NOT MODIFY**
-│  │  ├─ steam_patcher.exe          Pre-built native executable (copied to bin/)
-│  │  └─ pure_patcher.exe           Pre-built native executable (copied to bin/)
-│  ├─ LauncherTF2.csproj            Project file, build config
-│  └─ app.manifest                  Admin elevation config
-│
-├─ resources/Assets/                Images & UI assets (PNG)
-├─ cfg/                             Example autoexec.cfg templates
-├─ scripts/
-│  ├─ build.ps1                     Master build script
-│  ├─ start.bat                     Launch launcher
-│  └─ run.bat                       Launch launcher only
-├─ docs/                            Implementation notes
-├─ project_eternal_launcher-main.sln
-├─ README.md
-└─ LICENSE
-```
+### Elevation model
 
-### Key File Paths (Relative to Repo Root)
-- **Launcher Output:** `src/LauncherTF2/bin/Debug/net8.0-windows/LauncherTF2.exe`
-- **Native Patchers:** `src/LauncherTF2/native/{steam,pure}_patcher.exe`
-- **Launcher Config:** `{AppDir}/settings.json` (persisted)
-- **Price Cache:** `{AppDir}/price_cache.json` (2h TTL disk cache)
-- **Mod State:** `{AppDir}/mod_state.json` (enable/disable tracking)
-- **Logs:** `{AppDir}/app_debug.log` (10 MB rotating)
+The launcher's `app.manifest` declares `asInvoker`. This is intentional:
 
----
+- An elevated WPF window cannot receive OLE drag-drop from Explorer (different integrity levels), so the mod-install drop zone needs the launcher to stay unelevated.
+- Customising the title bar uses `WindowChrome` (in `Views/MainWindow.xaml`) instead of `AllowsTransparency=True`. WPF drag-drop is also broken on transparent windows, so this is the second reason to keep things this way.
 
-## 3. CODING CONVENTIONS
+When the user clicks "Launch TF2", `GameService.LaunchTF2()`:
 
-### Language & Framework
-- **C# 12+** — Implicit usings, nullable reference types enabled
-- **Target:** .NET 8.0 (Launcher: `-windows` variant)
-- **WPF:** MVVM pattern, ObservableCollection, INotifyPropertyChanged
-- **ASP.NET Core:** Dependency injection, scoped/transient services
+1. Calls `Process.Start` on the launcher's own executable path with `Verb="runas"` and `Arguments="--launch-tf2"`.
+2. Windows shows one UAC prompt with the FileDescription from the csproj (`Eternal TF2 Launcher`).
+3. The non-elevated UI immediately minimizes to tray.
 
-### Naming Conventions
-- **Classes:** `PascalCase` (e.g., `GameService`, `InventoryViewModel`)
-- **Methods:** `PascalCase` (e.g., `LaunchTF2()`, `GetSettings()`)
-- **Private fields:** `_camelCase` (e.g., `_settingsPath`, `_lock`)
-- **Properties:** `PascalCase` (e.g., `CustomFolderPath`)
-- **Local variables:** `camelCase` (e.g., `finalArgs`, `settings`)
-- **Constants:** `UPPER_SNAKE_CASE` (e.g., `MutexName`, `MaxLogFileSize`)
+The elevated child:
 
-### Async/Threading Patterns
-- **Async methods:** Always suffix with `Async` (e.g., `LaunchTF2Async()`)
-- **Fire-and-forget:** Use `_ = Task.Run(async () => { ... })` explicitly
-- **Thread-safety:** Lock around shared state (e.g., `_lock` in SettingsService)
-- **Single-flight gates:** Use `NativeExecutableService.ResetSingleFlight(key)` for one-shot operations
+1. `App` constructor detects `--launch-tf2` in `Environment.GetCommandLineArgs()`, sets `_isElevatedLauncherChild=true`, skips the UI mutex and the auto-clear-logs step (the UI process owns those concerns).
+2. `App.OnStartup` returns early without creating `MainWindow`.
+3. `RunElevatedLaunchAndExit` runs `GameService.RunPatchAndLaunchSequenceAsync()` on a background task, then calls `Current.Shutdown()` when it completes.
 
-### Memory & Resource Management
-- **Streams/Files:** Always wrap in `using` or `using()` declaration
-- **Locks:** Acquired/released via `lock (_lock) { ... }` blocks
-- **Process spawning:** `Process.Start()` → no explicit cleanup needed (CLR handles)
-- **Disposal:** `_mutex?.Dispose()` explicitly in App_Exit
+Splitting the launch flow this way lets us keep the UI unelevated while still giving the patchers admin rights, behind a **single** UAC prompt per game launch.
 
-### Logging Style
-```csharp
-// Format: [Module] Message (brackets required for grepping)
-Logger.LogInfo("[GameService] Launch orchestration started");
-Logger.LogWarning("[ModManager] Failed to resolve custom folder", ex);
-Logger.LogError("[SettingsService] Cannot load settings.json", ex);
-```
+### Game orchestration
 
-### Error Handling
-- **App-level:** `App_DispatcherUnhandledException` → shows MessageBox + writes `crash_log.txt`
-- **Service-level:** Return `bool`/`null` on failure, log the exception
-- **User-facing:** Catch, log, show friendly MessageBox
+`GameService` exposes two entry points:
 
-### Service Registration Pattern
-```csharp
-// In ServiceLocator.Initialize():
-Settings = new SettingsService();
-Game = new GameService(Settings);  // Dependency passed explicitly
-```
+- `LaunchTF2()` — UI-side. Spawns the elevated helper via `TrySpawnElevatedHelper()`, then `MinimizeToTray()`.
+- `RunPatchAndLaunchSequenceAsync()` — helper-side. Reads settings, resets the `pure_patcher` single-flight gate, runs `OrchestrateSteamPatcherAndLaunch()`.
 
-### ViewModel Binding Pattern
-```csharp
-public ObservableCollection<ModModel> Mods { get; } = new();
-public ICommand LaunchCommand { get; }
+`OrchestrateSteamPatcherAndLaunch` (unchanged logic, just relocated):
 
-public SomeViewModel()
-{
-    LaunchCommand = new AsyncRelayCommand(LaunchAsync);
-}
-```
+- Starts `steam_patcher.exe` through `NativeExecutableService`.
+- Waits for Steam to settle (handles the case where the patcher restarts Steam).
+- Launches TF2 via `steam://rungameid/440`.
+- Polls for the `tf_win64` process and waits for a visible window.
+- Starts `pure_patcher.exe` once the game is ready.
 
----
+The UI process has nothing to wait on after spawning the helper — the helper is fire-and-forget from the UI's perspective and exits on its own when TF2 is patched.
 
-## 4. HARD BOUNDARIES
+### Configuration management
 
-### ✋ NEVER DO THESE
+`SettingsService` is the persistence layer for TF2 settings.
 
-1. **Native Executables**
-   - DO NOT modify `src/LauncherTF2/native/steam_patcher.exe` or `pure_patcher.exe`
-   - DO NOT recompile or replace them without explicit approval
-   - DO NOT move them outside `native/` folder
+Behavior:
 
-2. **Settings & Config Files**
-   - DO NOT edit `settings.json` directly; always use `SettingsService`
-   - DO NOT parse/modify files outside the designated service (violates separation of concerns)
-   - DO NOT store sensitive data in plain text config
+- Loads `settings.json` from the app base directory.
+- Creates defaults if the file is missing.
+- Saves immediately when settings change.
+- Writes `autoexec.cfg` through `AutoexecWriter` after successful save.
+- Also stores launcher-specific preferences in `launcher_config.json`.
 
-3. **External Dependencies**
-   - DO NOT add new NuGet packages without justification
-   - DO NOT upgrade dependencies without running full build + test
-   - DO NOT use undocumented or bleeding-edge package versions
+`SettingsViewModel` works with a `SettingsModel` instance and binds bind-editing, display mode, and validation state.
 
-4. **Mutex & Single Instance**
-   - DO NOT bypass the `MutexName` guard in `App.xaml.cs`
-   - DO NOT allow multiple launcher instances simultaneously
+### Mod management
 
-5. **Async & Thread Safety**
-   - DO NOT mix `Task.Result` / `.Wait()` with async code (deadlock risk)
-   - DO NOT read/write `_currentSettings` without locking
-   - DO NOT bypass `_launchOrchestrationInProgress` gate in GameService
+`ModManagerService` is filesystem-based.
 
-6. **Service Layer**
-   - DO NOT create duplicate service instances in ViewModels
-   - DO NOT access services outside of `ServiceLocator`
-   - DO NOT hard-code paths; use `GamePaths` or `SettingsService`
+Behavior:
 
-7. **UI & XAML**
-   - DO NOT bind directly to services in XAML (use ViewModel intermediary)
-   - DO NOT perform long-running operations on the UI thread
-   - DO NOT modify MainWindow layout without coordinating tab structure
+- Enabled mods live in TF2 `custom/`.
+- Disabled mods live in `custom/disabled/`.
+- VPK files and folders are both supported.
+- Multi-file VPK sets (`name_dir.vpk` + `name_000.vpk`, `name_001.vpk`, …) are treated as one mod. `ToggleMod()` and `RemoveMod()` move/delete every chunk together so no orphans are left behind. `IsVpkChunkFile()` only treats a numbered VPK as a chunk when its `_dir.vpk` companion exists in the same folder — lone files like `awp_dragon_001.vpk` still register as their own mod.
+- `RemoveMod()` deletes the mod from disk permanently.
+- `InstallMod()` copies a file or folder into `custom/`.
+- Startup removes `.cache` files from the mod tree.
+- `RefreshMods()` logs the resolved `CustomFolderPath` and top-level VPK/folder counts on every scan — useful when a mod is "missing" because the user put it in the wrong directory.
 
-8. **Logging**
-   - DO NOT log sensitive data (Steam paths, API keys, user inventory)
-   - DO NOT disable logging; configure via `LauncherConfig.EnableDebugLog`
-   - DO NOT write arbitrary files; use Logger only
+`ModInstallationService` handles drag-and-drop and archive extraction.
 
-9. **Version Control**
-    - DO NOT commit `bin/`, `obj/`, `.vs/`, `*.user` files
-    - DO NOT commit sensitive credentials; use environment variables
-    - DO NOT commit local test artifacts or crash logs
+Behavior:
 
-### ✅ ALWAYS DO THESE
+- Supports folder drops directly.
+- Supports `.vpk`, `.zip`, `.rar`, `.7z`, and `.7zip`.
+- Validates archive output paths to prevent traversal.
+- Detects TF2-shaped folders by searching for known subdirectories such as `materials`, `models`, and `sound`.
 
-- Log all major operations with `[ModuleName]` prefix
-- Handle exceptions gracefully; show user-friendly messages
-- Use `ServiceLocator` for all service access
-- Write async methods with `Async` suffix
-- Wrap resources in `using` blocks
-- Coordinate with `SettingsService` for persistence
-- Test build after adding dependencies
-- Include XML doc comments on public methods
+`ModsViewModel` wraps that service with filtering, toggle commands, background GameBanana enrichment, and reload cancellation. The view uses both grid and list templates; both honour the `ThumbnailImage` (frozen `BitmapImage` produced by enrichment) when `IsEnriched=True`, and fall back to `ThumbnailPath` otherwise.
 
----
+### Home feed
 
-## 5. KNOWN INTEGRATIONS & ENDPOINTS
+`HomeViewModel` is the landing page controller.
 
-### External APIs (Direct from Launcher)
-- **Launcher → prices.tf:** `https://api2.prices.tf/prices/{sku}`
-- **Launcher → Steam Market:** `https://steamcommunity.com/market/priceoverview/...`
+Behavior:
 
-### File Paths (Resolved at Runtime)
-- **Steam Root:** `HKEY_CURRENT_USER\Software\Valve\Steam\SteamPath`
-- **TF2 Custom Folder:** `{SteamPath}/steamapps/common/Team Fortress 2/tf/custom/`
-- **Disabled Mods Folder:** `{tf}/custom/disabled/`
+- Builds a greeting from the time of day and Windows username.
+- Shows quick health indicators for TF2, Steam, and autoexec state.
+- Loads Steam news and GameBanana new mods.
+- Invalidates the feed cache on manual refresh.
+- Exposes quick actions for opening the TF2 folder, mods folder, autoexec, and settings backup.
 
-### Process & Orchestration
-1. **Launch:** User clicks "Launch TF2" → GameService.LaunchTF2()
-2. **Steam Patcher:** Runs `steam_patcher.exe` via NativeExecutableService
-3. **Steam Protocol:** Invokes `steam://run/440` to start TF2
-4. **Pure Patcher Gate:** Single-flight checks prevent duplicate runs
-5. **Autoexec:** AutoexecWriter regenerates on each launch
+`HomeFeedService` fetches the remote data and caches it in memory for 15 minutes.
 
----
+### Inventory and pricing
 
-## 6. BUILD & DEPLOYMENT
+The inventory tab is driven by `BackpackViewModel` under `ViewModels/Inventory/`.
 
-### Build Modes
-| Mode    | Command               | Output | Use Case |
-|---------|----------------------|--------|----------|
-| Debug   | `dotnet build -c Debug` | Symbols + full logs | Development |
-| Release | `dotnet build -c Release` | Optimized binary | Production |
+Behavior:
 
-### Target Framework
-- Launcher: `net8.0-windows` (WPF)
-- Platform: x64 only (x86 explicitly not configured)
+- Detects the active Steam user from the local Steam registry state.
+- Loads the TF2 backpack from Steam Community.
+- Uses a 10-minute local inventory cache and falls back to it when rate limited.
+- Hydrates item images in the background.
+- Displays pricing in the selected item detail panel.
+- Fetches store pricing directly in-process through `InventoryPricingService`.
 
-### Dependencies (Auto-fetched)
-**LauncherTF2:**
-- Hardcodet.NotifyIcon.Wpf (2.0.1) — Tray icon
-- Microsoft.Data.Sqlite (8.0.10) — Settings persistence
-- SharpCompress (0.36.0) — Mod archive extraction
+`InventoryPricingService` behavior:
 
----
+- Calls prices.tf and Steam Market directly.
+- Uses host-specific throttling and a 2-hour disk cache.
+- Produces store search URLs even when a price is unavailable.
+- Falls back to local prices for a few common TF2 items when both sources are unavailable.
 
-## 7. TROUBLESHOOTING CHECKLIST FOR CLAUDE
+### Enrichment and caches
 
-Before making changes:
-1. Verify settings.json parses correctly (SettingsService.LoadSettings)
-2. Check logs in `app_debug.log` for previous errors
-3. Ensure TF2 path exists before launching
-4. Confirm no other launcher instance running (Mutex gate)
-5. Check `crash_log.txt` if app exits unexpectedly
-6. Ensure native patchers exist in `src/LauncherTF2/native/`
+`GameBananaEnrichmentService` does background metadata resolution for mods.
+
+Behavior:
+
+- `BuildSearchQuery()` cleans the raw mod filename before searching: strips trailing version (`_v1_6_2`) and year (`_2024`) suffixes, drops packaging tags (`final`, `release`, `fixed`, `patch`, `update`), and converts separators to spaces.
+- Searches DuckDuckGo HTML results for GameBanana links matching the cleaned query.
+- Validates candidates against the GameBanana API.
+- Confirms the mod is TF2-related before applying metadata.
+- Downloads thumbnails into a local cache.
+- Persists positive and negative cache entries for 7 days — so failed matches from before the search-quality improvement stay cached. Delete `mod_metadata_cache.json` and `mod_thumbnails/` to force a re-fetch.
+
+`InventoryImageCache` and the mod thumbnail cache exist to avoid re-downloading assets on every view refresh.
+
+## 4. File Contracts
+
+### App-directory files
+
+- `settings.json` — TF2 settings and launch arguments.
+- `launcher_config.json` — tray, logging, and UI preferences.
+- `mod_state.json` — mod state marker file.
+- `price_cache.json` — market cache.
+- `tf2_inventory_cache.json` — cached backpack data.
+- `mod_metadata_cache.json` — GameBanana metadata cache.
+- `mod_thumbnails/` — local thumbnail image cache.
+- `app_debug.log` — rotating log file.
+- `crash_log.txt` — crash dump text.
+
+### TF2 install files
+
+- `tf/cfg/autoexec.cfg` — generated by `AutoexecWriter`.
+- `tf/custom/` — enabled mods.
+- `tf/custom/disabled/` — disabled mods.
+
+### Native executables
+
+- `src/LauncherTF2/native/steam_patcher.exe`
+- `src/LauncherTF2/native/pure_patcher.exe`
+
+These are versioned assets and should not be replaced casually.
+
+## 5. Coding Conventions That Matter Here
+
+- Prefer `ServiceLocator` for all shared service access.
+- Keep logging bracketed, e.g. `[Game]`, `[Mods]`, `[InventoryPricing]`.
+- Continue using async methods with `Async` suffix.
+- Keep shared mutable state behind `lock` or interlocked gates.
+- Do not put blocking waits on the UI thread.
+- Use `ApplyPatch` / dedicated edit tools for changes in this workspace; do not hand-edit with shell writes.
+- XML comments inside `app.manifest` must be single-line — multi-line `<!-- ... \n ... -->` blocks make the Windows SxS parser reject the manifest with "Invalid Xml syntax" and the exe fails to start with a side-by-side error.
+
+## 6. Hard Boundaries
+
+### Do not change
+
+1. Native patchers under `src/LauncherTF2/native/` without explicit approval.
+2. The single-instance guard in `App.xaml.cs` (UI-mode only — the elevated helper intentionally bypasses it).
+3. The `asInvoker` manifest. Re-elevating the UI process breaks drag-drop from Explorer.
+4. The `WindowChrome` setup in `MainWindow.xaml`. Replacing it with `AllowsTransparency=True` also breaks drag-drop.
+5. Direct file-path assumptions when a service already owns the path logic.
+6. UI bindings that bypass view models.
+7. Silent or unbounded background loops in the launch path.
+
+### Prefer to keep
+
+- Settings persistence centralized in `SettingsService`.
+- Mod enable/disable behavior filesystem-based.
+- Launch orchestration fire-and-forget from the UI's perspective — the elevated helper owns the rest.
+
+## 7. Current Pending Work
+
+These are the concrete open items visible in the codebase right now:
+
+1. `Core/Converters.cs` still contains `ConvertBack` methods that throw `NotImplementedException`. They are safe only where the binding is one-way.
+2. The inventory tab still depends on Steam Community login state for the full experience. If Steam is not running or logged in, the view degrades to cached or empty results.
+3. Network-driven surfaces such as Steam news, GameBanana enrichment, prices.tf, and Steam Market need graceful failure behavior. The current design is cache-first and should stay that way.
+4. The `SharpCompress` 0.36.0 dependency has a known moderate-severity vulnerability (NU1902). Upgrade when there's a stable release we trust.
+
+## 8. Troubleshooting Checklist
+
+When something regresses, check these first:
+
+1. Confirm `settings.json` loads and the Steam path points at the TF2 install.
+2. Confirm `tf_win64.exe` exists under the configured TF2 path.
+3. Check `app_debug.log` for `[Game]`, `[Mods]`, `[Home]`, and `[InventoryPricing]` entries.
+4. Make sure Steam is running and logged in before testing inventory behavior.
+5. Make sure native patcher binaries are present in the output directory after build.
+6. If a mod doesn't appear after copying it to `custom/`, check the `[Mods] Refresh scan target:` line — it logs the resolved path and counts. The mod must be a top-level `.vpk` or folder (not inside a subfolder, not under `disabled/`).
+7. If mod thumbnails don't appear, delete `mod_metadata_cache.json` and `mod_thumbnails/` to force re-enrichment.
+8. If "Launch TF2" doesn't prompt UAC, the launcher might already be elevated — check Task Manager. Self-elevation requires the parent to be unelevated.
+
+## 9. Suggested Next Edits
+
+If you are continuing the cleanup pass, the next sensible tasks are:
+
+1. Replace or remove the placeholder `ConvertBack` implementations in `Core/Converters.cs`.
+2. Decide whether `RefreshMods()` should remain a diagnostic-only hook or become a meaningful rescan trigger.
+3. Add a UI button to clear the GameBanana enrichment cache (currently a manual file deletion).
+4. Bump `SharpCompress` past the known vulnerability when a trustworthy version is available.

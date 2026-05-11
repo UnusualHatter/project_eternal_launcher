@@ -13,9 +13,30 @@ public partial class ModsView : UserControl
         InitializeComponent();
     }
 
-    /// <summary>
-    /// Handles file/folder drops on the install panel.
-    /// </summary>
+    // Root-level fallback so a drop landing on padding / empty areas outside
+    // the dedicated DropZone still installs the file.
+    private async void UserControl_Drop(object sender, DragEventArgs e)
+    {
+        try
+        {
+            ResetDropVisual();
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && DataContext is ModsViewModel viewModel)
+            {
+                var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (paths != null && paths.Length > 0)
+                    await viewModel.HandleDropAsync(paths);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[ModsView] Unhandled error while processing root-level drop", ex);
+        }
+    }
+
+    private void UserControl_DragEnter(object sender, DragEventArgs e) => SetCopyEffectIfFiles(e);
+    private void UserControl_DragOver(object sender, DragEventArgs e) => SetCopyEffectIfFiles(e);
+
     private async void DropZone_Drop(object sender, DragEventArgs e)
     {
         try
@@ -27,53 +48,36 @@ public partial class ModsView : UserControl
             {
                 var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
                 if (paths != null && paths.Length > 0)
-                {
                     await viewModel.HandleDropAsync(paths);
-                }
             }
+            e.Handled = true;
         }
         catch (Exception ex)
         {
-            Logger.LogError("Unhandled error while processing mod drop event", ex);
+            Logger.LogError("[ModsView] Unhandled error while processing drop-zone drop", ex);
         }
     }
 
-    /// <summary>
-    /// Visual feedback when dragging files over the drop zone.
-    /// </summary>
     private void DropZone_DragEnter(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop) && sender is Border border)
         {
             border.BorderBrush = (SolidColorBrush)FindResource("AccentBrush");
-            border.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xFF, 0x6B, 0x00)); // AccentColor with low alpha
+            border.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xFF, 0x6B, 0x00));
         }
+        SetCopyEffectIfFiles(e);
     }
 
-    /// <summary>
-    /// Explicitly tells Windows we accept the dragged files.
-    /// Without this, WPF sometimes defaults to DragDropEffects.None (showing a 🚫 cursor).
-    /// </summary>
-    private void DropZone_DragOver(object sender, DragEventArgs e)
-    {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
-        }
-        else
-        {
-            e.Effects = DragDropEffects.None;
-            e.Handled = true;
-        }
-    }
+    private void DropZone_DragOver(object sender, DragEventArgs e) => SetCopyEffectIfFiles(e);
 
-    /// <summary>
-    /// Reset visual when dragging leaves the drop zone.
-    /// </summary>
-    private void DropZone_DragLeave(object sender, DragEventArgs e)
+    private void DropZone_DragLeave(object sender, DragEventArgs e) => ResetDropVisual();
+
+    private static void SetCopyEffectIfFiles(DragEventArgs e)
     {
-        ResetDropVisual();
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
     }
 
     private void ResetDropVisual()

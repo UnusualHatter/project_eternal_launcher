@@ -225,13 +225,22 @@ public class ModManagerService
     }
 
     /// <summary>
-    /// Returns true if this VPK is a numbered data chunk (_000, _001, _002, etc.).
-    /// These are part of a multi-file VPK set and should not be shown individually.
+    /// Returns true if this VPK is a numbered data chunk that belongs to a multi-file
+    /// VPK set. A chunk only "counts" as a chunk when its companion <c>_dir.vpk</c>
+    /// exists next to it — a lone <c>mymod_001.vpk</c> with no <c>mymod_dir.vpk</c>
+    /// alongside is just a normal single-file VPK and must still be shown.
     /// </summary>
     private static bool IsVpkChunkFile(string vpkPath)
     {
         var name = Path.GetFileNameWithoutExtension(vpkPath);
-        return Regex.IsMatch(name, @"_\d{3}$");
+        var match = Regex.Match(name, @"^(.*)_\d{3}$");
+        if (!match.Success) return false;
+
+        var dir = Path.GetDirectoryName(vpkPath);
+        if (string.IsNullOrEmpty(dir)) return false;
+
+        var companionDirVpk = Path.Combine(dir, $"{match.Groups[1].Value}_dir.vpk");
+        return File.Exists(companionDirVpk);
     }
 
     private ModModel? CreateModFromVpk(string vpkPath)
@@ -459,7 +468,10 @@ public class ModManagerService
     }
 
     /// <summary>
-    /// Removes a mod from disk permanently.
+    /// Removes a mod from disk permanently. For multi-file VPK sets
+    /// (<c>name_dir.vpk</c> + <c>name_000.vpk</c>, <c>name_001.vpk</c>, …),
+    /// every chunk file is deleted alongside the index file so no orphans
+    /// are left behind.
     /// </summary>
     public bool RemoveMod(ModModel mod)
     {
@@ -468,12 +480,45 @@ public class ModManagerService
             if (string.IsNullOrEmpty(mod.ModPath))
                 return false;
 
-            if (File.Exists(mod.ModPath))
-                File.Delete(mod.ModPath);
-            else if (Directory.Exists(mod.ModPath))
+            if (Directory.Exists(mod.ModPath))
+            {
                 Directory.Delete(mod.ModPath, true);
+                Logger.LogInfo($"Removed mod folder: {mod.Name}");
+                return true;
+            }
 
-            Logger.LogInfo($"Removed mod: {mod.Name}");
+            if (!File.Exists(mod.ModPath))
+            {
+                Logger.LogWarning($"Cannot remove '{mod.Name}' — path does not exist: {mod.ModPath}");
+                return false;
+            }
+
+            // Collect the index file and any companion chunk files
+            var filesToDelete = new List<string> { mod.ModPath };
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(mod.ModPath);
+            if (nameWithoutExt.EndsWith("_dir", StringComparison.OrdinalIgnoreCase))
+            {
+                var baseName = nameWithoutExt[..^4];
+                var dir = Path.GetDirectoryName(mod.ModPath) ?? string.Empty;
+                var chunkFiles = Directory.GetFiles(dir, $"{baseName}_*.vpk", SearchOption.TopDirectoryOnly)
+                    .Where(IsVpkChunkFile);
+                filesToDelete.AddRange(chunkFiles);
+            }
+
+            foreach (var path in filesToDelete)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                        File.Delete(path);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"Failed to delete '{Path.GetFileName(path)}' while removing '{mod.Name}': {ex.Message}");
+                }
+            }
+
+            Logger.LogInfo($"Removed mod: {mod.Name} ({filesToDelete.Count} file(s) deleted)");
             return true;
         }
         catch (Exception ex)
@@ -494,7 +539,20 @@ public class ModManagerService
 
     public void RefreshMods()
     {
-        Logger.LogDebug("Refreshed mod state");
+        try
+        {
+            var vpkCount = Directory.Exists(CustomFolderPath)
+                ? Directory.GetFiles(CustomFolderPath, "*.vpk", SearchOption.TopDirectoryOnly).Length
+                : -1;
+            var folderCount = Directory.Exists(CustomFolderPath)
+                ? Directory.GetDirectories(CustomFolderPath).Length
+                : -1;
+            Logger.LogInfo($"[Mods] Refresh scan target: '{CustomFolderPath}' (top-level: {vpkCount} .vpk file(s), {folderCount} folder(s))");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("[Mods] Failed to enumerate custom folder during refresh", ex);
+        }
     }
 }
 

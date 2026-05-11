@@ -5,8 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:vm="clr-namespace:LauncherTF2.ViewModels"
              xmlns:local="clr-namespace:LauncherTF2.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="720" d:DesignWidth="1030">
+             mc:Ignorable="d"
+             d:DesignHeight="720" d:DesignWidth="1030"
+             Background="Transparent"
+             AllowDrop="True"
+             Drop="UserControl_Drop"
+             DragEnter="UserControl_DragEnter"
+             DragOver="UserControl_DragOver">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
@@ -283,9 +288,21 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Thumbnail -->
+                    <!-- Thumbnail — same source logic as the grid card: switch to the
+                         pre-built BitmapImage once GameBanana enrichment lands. -->
                     <Border Grid.Column="0" Width="44" Height="44" CornerRadius="8" Background="#111">
-                        <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill"/>
+                        <Image Stretch="UniformToFill">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Source" Value="{Binding ThumbnailPath}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEnriched}" Value="True">
+                                            <Setter Property="Source" Value="{Binding ThumbnailImage}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
                     </Border>
 
                     <!-- Info -->
