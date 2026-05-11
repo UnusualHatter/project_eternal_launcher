@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="LauncherTF2.Views.InventoryView"
+<UserControl x:Class="LauncherTF2.Views.InventoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,10 +10,10 @@
     <UserControl.Resources>
 
         <Style x:Key="SearchBoxStyle" TargetType="TextBox">
-            <Setter Property="Background" Value="#15151B"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceInsetBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="CaretBrush" Value="White"/>
-            <Setter Property="BorderBrush" Value="#2C2C36"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="FontSize" Value="13"/>
@@ -28,7 +28,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="bg" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -50,15 +50,15 @@
                     <Border Grid.Row="0" Height="108"
                             BorderBrush="{Binding BorderColorHex}"
                             BorderThickness="0,0,0,2.5"
-                            Background="#0E0E13"
+                            Background="{DynamicResource SurfaceInsetBrush}"
                             CornerRadius="6">
                         <Grid>
                             <Image Source="{Binding Image}" Stretch="Uniform" Margin="8"
                                    RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                            <Border Background="#1A1A22" CornerRadius="4" Margin="20"
+                            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="4" Margin="20"
                                     Visibility="{Binding HasImage, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                <TextBlock Text="• • •" Foreground="#3A3A44" FontSize="13"
+                                <TextBlock Text="&#x2022; &#x2022; &#x2022;" Foreground="#3A3A44" FontSize="13"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
 
@@ -69,7 +69,7 @@
                             </Border>
 
                             <Ellipse HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6"
-                                     Width="7" Height="7" Fill="{StaticResource AccentBrush}"
+                                     Width="7" Height="7" Fill="{DynamicResource AccentBrush}"
                                      Visibility="{Binding HasAccent, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </Grid>
                     </Border>
@@ -95,14 +95,14 @@
 
     </UserControl.Resources>
 
-    <Grid Background="#0F0F14">
+    <Grid Background="{DynamicResource PageBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Grid.Row="0" Background="#13131A" BorderBrush="#22222A" BorderThickness="0,0,0,1" Padding="22,14">
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="22,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -136,8 +136,8 @@
             </Grid.ColumnDefinitions>
 
             <!-- Filter rail -->
-            <Border Grid.Column="0" Width="264" Background="#0D0D12"
-                    BorderBrush="#1E1E26" BorderThickness="0,0,1,0"
+                <Border Grid.Column="0" Width="264" Background="{DynamicResource SurfaceInsetBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0"
                     Visibility="{Binding IsFilterPanelOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Style="{StaticResource ModernScrollViewerStyle}"
@@ -239,7 +239,7 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <Border Background="#CC0E0E13"
+                <Border Background="#CC0E1118"
                         Visibility="{Binding HasItems, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380">
                         <TextBlock Text="No items loaded" Foreground="#E0E0E5" FontSize="20"
@@ -251,11 +251,11 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="#CC0E0E13"
+                <Border Background="#CC0E1118"
                         Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ProgressBar Width="200" Height="3" IsIndeterminate="True"
-                                     Foreground="{StaticResource AccentBrush}"/>
+                                     Foreground="{DynamicResource AccentBrush}"/>
                         <TextBlock Text="Loading inventory..." Foreground="#D0D0D5"
                                    HorizontalAlignment="Center" Margin="0,12,0,0"/>
                     </StackPanel>
@@ -263,8 +263,8 @@
             </Grid>
 
             <!-- Detail panel -->
-            <Border Grid.Column="2" Width="352" Background="#0D0D12"
-                    BorderBrush="#1E1E26" BorderThickness="1,0,0,0"
+                <Border Grid.Column="2" Width="352" Background="{DynamicResource SurfaceInsetBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
                     Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -272,7 +272,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Background="#11111A" BorderBrush="#22222C"
+                        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="0,0,0,1" Padding="14,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -290,8 +290,8 @@
                     <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewerStyle}" Padding="16,14">
                         <StackPanel DataContext="{Binding SelectedItem}">
 
-                            <Border Width="140" Height="140" HorizontalAlignment="Center"
-                                    Background="#11111A"
+                                <Border Width="140" Height="140" HorizontalAlignment="Center"
+                                    Background="{DynamicResource SurfaceBrush}"
                                     BorderBrush="{Binding BorderColorHex}"
                                     BorderThickness="0,0,0,3" CornerRadius="8" Margin="0,4,0,14">
                                 <Image Source="{Binding Image}" Stretch="Uniform" Margin="10"/>
@@ -354,7 +354,7 @@
                                           RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#15151B" BorderBrush="#23232C"
+                                        <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                                 BorderThickness="1" CornerRadius="6"
                                                 Padding="10" Margin="0,0,0,6">
                                             <Grid>
@@ -375,7 +375,7 @@
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                             VerticalAlignment="Center">
                                                     <ProgressBar Width="32" Height="2" IsIndeterminate="True"
-                                                                 Foreground="{StaticResource AccentBrush}"
+                                                                 Foreground="{DynamicResource AccentBrush}"
                                                                  Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                     <Button Content="↗" Margin="6,0,0,0" Padding="8,3"
                                                             Command="{Binding DataContext.OpenStoreLinkCommand,

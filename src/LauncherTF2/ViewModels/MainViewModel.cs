@@ -1,4 +1,5 @@
 using LauncherTF2.Core;
+using LauncherTF2.Services;
 using LauncherTF2.ViewModels.Inventory;
 using System.Windows.Input;
 using System.Windows;
@@ -21,6 +22,12 @@ public class MainViewModel : ViewModelBase
 
     public ModsViewModel ModsVM { get; }
     public SettingsViewModel SettingsVM { get; }
+
+    /// <summary>
+    /// Exposed for XAML bindings (logo source, accent glow, etc.). The shared
+    /// service is created once by ServiceLocator and is observable.
+    /// </summary>
+    public ThemeManagerService Theme => ServiceLocator.Theme;
 
     // True when the Home tab is active — drives sidebar background animation
     public bool IsHome { get; private set; } = true;

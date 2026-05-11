@@ -64,6 +64,58 @@ public class SettingsModel : ViewModelBase
     private int _cmdRate = 66;
     private int _updateRate = 66;
     private int _queueMode = 2;
+    private int _interpRatio = 2;
+    private bool _smoothEnabled = true;
+    private int _predOptimize = 2;
+    private string? _networkPreset = "Casual";
+
+    // ─── Gameplay extensions (new, default to current TF2 defaults) ───
+    private bool _hudFastSwitch = true;
+    private bool _minViewmodels;
+    private bool _killSound = true;
+    private bool _autoRezoom = true;
+    private bool _closedCaptions;
+    private int _customAccel; // 0 = off
+
+    // ─── Competitive ───
+    private bool _medicAutocall = true;
+    private int _medicAutocallThreshold = 75;
+    private int _fpsMax = 300;
+    private bool _nullMovement;
+    private bool _transparentViewmodels;
+
+    // ─── Performance toggles + preset id ───
+    private bool _removeGibs;
+    private bool _removeSprays = true;
+    private bool _disableJiggleBones;
+    private bool _disableFacialAnims;
+    private bool _disableDynamicLights;
+    private bool _disablePyroland;
+    private bool _disableDecals;
+    private string? _performancePreset = "Balanced";
+
+    // ─── FPS cap + visual quality (Performance) ───
+    private int _fpsMaxMenu = 60;
+    private bool _matSpecular = true;
+    private bool _matPhong = true;
+    private bool _matBumpmap = true;
+
+    // ─── Viewmodel extras ───
+    private bool _flipViewmodels;
+
+    // ─── Viewmodel offsets ───
+    private double _viewmodelOffsetX;
+    private double _viewmodelOffsetY;
+    private double _viewmodelOffsetZ;
+    private bool _viewmodelBobOff;
+    private bool _viewmodelSwayOff;
+
+    // ─── Audio ───
+    private double _hitsoundVolume = 0.7;
+    private double _voiceScale = 1.0;
+    private int _hitsoundPitchMin = 100;
+    private int _hitsoundPitchMax = 100;
+    private bool _asyncSound = true;
 
     public string SteamPath { get => _steamPath; set => SetProperty(ref _steamPath, value); }
     public string LaunchArgs { get => _launchArgs; set => SetProperty(ref _launchArgs, value); }
@@ -107,6 +159,54 @@ public class SettingsModel : ViewModelBase
     public int CmdRate { get => _cmdRate; set => SetProperty(ref _cmdRate, value); }
     public int UpdateRate { get => _updateRate; set => SetProperty(ref _updateRate, value); }
     public int QueueMode { get => _queueMode; set => SetProperty(ref _queueMode, value); }
+    public int InterpRatio { get => _interpRatio; set => SetProperty(ref _interpRatio, value); }
+    public bool SmoothEnabled { get => _smoothEnabled; set => SetProperty(ref _smoothEnabled, value); }
+    public int PredOptimize { get => _predOptimize; set => SetProperty(ref _predOptimize, value); }
+    public string? NetworkPreset { get => _networkPreset; set => SetProperty(ref _networkPreset, value); }
+
+    // ─── Gameplay extensions ───
+    public bool HudFastSwitch { get => _hudFastSwitch; set => SetProperty(ref _hudFastSwitch, value); }
+    public bool MinViewmodels { get => _minViewmodels; set => SetProperty(ref _minViewmodels, value); }
+    public bool KillSound { get => _killSound; set => SetProperty(ref _killSound, value); }
+    public bool AutoRezoom { get => _autoRezoom; set => SetProperty(ref _autoRezoom, value); }
+    public bool ClosedCaptions { get => _closedCaptions; set => SetProperty(ref _closedCaptions, value); }
+    public int CustomAccel { get => _customAccel; set => SetProperty(ref _customAccel, value); }
+
+    // ─── Competitive ───
+    public bool MedicAutocall { get => _medicAutocall; set => SetProperty(ref _medicAutocall, value); }
+    public int MedicAutocallThreshold { get => _medicAutocallThreshold; set => SetProperty(ref _medicAutocallThreshold, value); }
+    public int FpsMax { get => _fpsMax; set => SetProperty(ref _fpsMax, value); }
+    public bool NullMovement { get => _nullMovement; set => SetProperty(ref _nullMovement, value); }
+    public bool TransparentViewmodels { get => _transparentViewmodels; set => SetProperty(ref _transparentViewmodels, value); }
+
+    // ─── Performance ───
+    public bool RemoveGibs { get => _removeGibs; set => SetProperty(ref _removeGibs, value); }
+    public bool RemoveSprays { get => _removeSprays; set => SetProperty(ref _removeSprays, value); }
+    public bool DisableJiggleBones { get => _disableJiggleBones; set => SetProperty(ref _disableJiggleBones, value); }
+    public bool DisableFacialAnims { get => _disableFacialAnims; set => SetProperty(ref _disableFacialAnims, value); }
+    public bool DisableDynamicLights { get => _disableDynamicLights; set => SetProperty(ref _disableDynamicLights, value); }
+    public bool DisablePyroland { get => _disablePyroland; set => SetProperty(ref _disablePyroland, value); }
+    public bool DisableDecals { get => _disableDecals; set => SetProperty(ref _disableDecals, value); }
+    public string? PerformancePreset { get => _performancePreset; set => SetProperty(ref _performancePreset, value); }
+    public int FpsMaxMenu { get => _fpsMaxMenu; set => SetProperty(ref _fpsMaxMenu, value); }
+    public bool MatSpecular { get => _matSpecular; set => SetProperty(ref _matSpecular, value); }
+    public bool MatPhong { get => _matPhong; set => SetProperty(ref _matPhong, value); }
+    public bool MatBumpmap { get => _matBumpmap; set => SetProperty(ref _matBumpmap, value); }
+    public bool FlipViewmodels { get => _flipViewmodels; set => SetProperty(ref _flipViewmodels, value); }
+
+    // ─── Viewmodel offsets ───
+    public double ViewmodelOffsetX { get => _viewmodelOffsetX; set => SetProperty(ref _viewmodelOffsetX, value); }
+    public double ViewmodelOffsetY { get => _viewmodelOffsetY; set => SetProperty(ref _viewmodelOffsetY, value); }
+    public double ViewmodelOffsetZ { get => _viewmodelOffsetZ; set => SetProperty(ref _viewmodelOffsetZ, value); }
+    public bool ViewmodelBobOff { get => _viewmodelBobOff; set => SetProperty(ref _viewmodelBobOff, value); }
+    public bool ViewmodelSwayOff { get => _viewmodelSwayOff; set => SetProperty(ref _viewmodelSwayOff, value); }
+
+    // ─── Audio ───
+    public double HitsoundVolume { get => _hitsoundVolume; set => SetProperty(ref _hitsoundVolume, value); }
+    public double VoiceScale { get => _voiceScale; set => SetProperty(ref _voiceScale, value); }
+    public int HitsoundPitchMin { get => _hitsoundPitchMin; set => SetProperty(ref _hitsoundPitchMin, value); }
+    public int HitsoundPitchMax { get => _hitsoundPitchMax; set => SetProperty(ref _hitsoundPitchMax, value); }
+    public bool AsyncSound { get => _asyncSound; set => SetProperty(ref _asyncSound, value); }
 
     private ObservableCollection<BindModel> _binds = new();
     public ObservableCollection<BindModel> Binds

@@ -121,7 +121,7 @@ public class ModInstallationService
             Directory.CreateDirectory(tempDir);
             await Task.Run(() =>
             {
-                using var archive = ArchiveFactory.Open(archivePath);
+                using var archive = ArchiveFactory.OpenArchive(archivePath);
                 foreach (var entry in archive.Entries)
                 {
                     if (!entry.IsDirectory && !string.IsNullOrEmpty(entry.Key))

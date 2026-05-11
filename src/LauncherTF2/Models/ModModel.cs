@@ -14,7 +14,7 @@ public class ModModel : ViewModelBase
     private string _description = string.Empty;
     private string _version = "1.0.0";
     private bool _isEnabled;
-    private string _thumbnailPath = "/Resources/Assets/logo.png";
+    private string _thumbnailPath = "/Resources/Assets/logo_classic.png";
     private string _modPath = string.Empty;
     private DateTime _lastModified;
     private ModType _modType = ModType.Unknown;

@@ -1,5 +1,6 @@
-﻿using LauncherTF2.Core;
+using LauncherTF2.Core;
 using LauncherTF2.Models;
+using LauncherTF2.Models.Settings;
 using System.IO;
 using System.Text;
 
@@ -14,6 +15,11 @@ namespace LauncherTF2.Services;
 /// The managed block is written at the *bottom* of the file so its values execute
 /// last (TF2 evaluates the cfg top-to-bottom, last write wins) — this keeps the
 /// settings UI in sync with what the game actually applies.
+///
+/// Block layout is data-driven: <see cref="SettingsSchema"/> defines the
+/// categories and items, and each <see cref="SettingItem.EmitCvarLines"/> call
+/// produces zero or more cvar lines. Items that return nothing don't get a
+/// row, so the cfg never gains junk lines for unused features.
 /// </summary>
 public class AutoexecWriter
 {
@@ -91,45 +97,29 @@ public class AutoexecWriter
         sb.AppendLine("// anything outside the markers is yours and won't be touched.");
         sb.AppendLine();
 
-        sb.AppendLine("// --- Graphics ---");
-        sb.AppendLine($"mat_vsync {(settings.VSync ? "1" : "0")}");
-        sb.AppendLine($"mat_antialias {settings.AntiAliasing}");
-        sb.AppendLine($"mat_forceaniso {settings.AnisotropicFiltering}");
-        sb.AppendLine($"mat_disable_bloom {(settings.Bloom ? "0" : "1")}");
-        sb.AppendLine($"mat_motion_blur_strength {settings.MotionBlurStrength.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"r_lod {settings.ModelLod}");
-        sb.AppendLine($"cl_ragdoll_physics_enable {(settings.Ragdolls ? "1" : "0")}");
-        sb.AppendLine($"cl_detaildist {settings.DetailDistance}");
-        sb.AppendLine();
+        foreach (var cat in SettingsSchema.Build(settings))
+        {
+            // Build the lines first so we can skip the whole header when a category emits nothing.
+            var lines = cat.Items
+                .SelectMany(item => item.EmitCvarLines())
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToList();
+            if (lines.Count == 0) continue;
 
-        sb.AppendLine("// --- Gameplay ---");
-        sb.AppendLine($"fov_desired {settings.Fov}");
-        sb.AppendLine($"viewmodel_fov {settings.ViewmodelFov}");
-        sb.AppendLine($"r_drawviewmodel {(settings.DrawViewmodel ? "1" : "0")}");
-        sb.AppendLine($"m_rawinput {(settings.RawInput ? "1" : "0")}");
-        sb.AppendLine($"sensitivity {settings.MouseSensitivity.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"cl_autoreload {(settings.AutoReload ? "1" : "0")}");
-        sb.AppendLine($"tf_dingalingaling {(settings.HitSound ? "1" : "0")}");
-        sb.AppendLine($"hud_combattext {(settings.DamageNumbers ? "1" : "0")}");
-        sb.AppendLine();
-
-        sb.AppendLine("// --- Network ---");
-        sb.AppendLine($"cl_interp {settings.Interp.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"cl_interpolate {(settings.Interpolate ? "1" : "0")}");
-        sb.AppendLine($"rate {settings.Rate}");
-        sb.AppendLine($"cl_cmdrate {settings.CmdRate}");
-        sb.AppendLine($"cl_updaterate {settings.UpdateRate}");
-        sb.AppendLine($"mat_queue_mode {settings.QueueMode}");
+            sb.AppendLine($"// --- {cat.AutoexecLabel} ---");
+            foreach (var line in lines) sb.AppendLine(line);
+            sb.AppendLine();
+        }
 
         if (settings.Binds.Count > 0)
         {
-            sb.AppendLine();
             sb.AppendLine("// --- Binds ---");
             foreach (var bind in settings.Binds)
             {
                 if (!string.IsNullOrWhiteSpace(bind.Key) && !string.IsNullOrWhiteSpace(bind.Command))
                     sb.AppendLine($"bind \"{bind.Key}\" \"{bind.Command}\"");
             }
+            sb.AppendLine();
         }
 
         return sb.ToString();

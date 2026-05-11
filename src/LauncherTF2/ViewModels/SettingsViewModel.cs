@@ -1,10 +1,27 @@
 using LauncherTF2.Core;
 using LauncherTF2.Models;
+using LauncherTF2.Models.Settings;
 using LauncherTF2.Services;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace LauncherTF2.ViewModels;
+
+/// <summary>
+/// One sidebar nav entry. Combines schema-driven categories with fixed
+/// sections (General, Launcher, Personalization, Binds). The
+/// <see cref="Id"/> is the stable anchor used by both the scroll-to-section
+/// logic and the IsActive highlight.
+/// </summary>
+public sealed class SidebarEntry : ViewModelBase
+{
+    private bool _isActive;
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+    public bool IsActive { get => _isActive; set => SetProperty(ref _isActive, value); }
+}
 
 public class SettingsViewModel : ViewModelBase
 {
@@ -139,14 +156,80 @@ public class SettingsViewModel : ViewModelBase
 
     public string[] LogLevels { get; } = ["Debug", "Info", "Warning", "Error"];
     public string[] DisplayModes { get; } = ["Fullscreen", "Windowed", "Borderless Windowed"];
-    public string[] Categories { get; } = ["General", "Game", "Graphics", "Network", "Advanced", "Launcher", "Binds"];
+
+    /// <summary>
+    /// Three-way DirectX picker shown in General → Launch behavior. The selected
+    /// option is written to <see cref="SettingsModel.DxLevel"/> and surfaces as
+    /// the <c>-dxlevel N</c> launch argument (see <see cref="SyncLaunchOptions"/>).
+    /// Source's <c>mat_dxlevel</c> autoexec cvar is intentionally NOT used — it
+    /// corrupts video.txt on the next launch.
+    /// </summary>
+    public IReadOnlyList<ChoiceOption> DxLevelOptions { get; } =
+    [
+        new ChoiceOption("DirectX 8.1 — Low-end PCs / laptops", 81,
+            "Highest FPS. Disables skins / war paints and may cause minor visual bugs (grayed-out level badges)."),
+        new ChoiceOption("DirectX 9.0 — Balanced", 90,
+            "Good balance for better graphics while maintaining decent performance."),
+        new ChoiceOption("DirectX 9.5 — Recommended", 95,
+            "For modern computers. Very stable, full quality, supports skins / war paints + all modern visuals."),
+    ];
+
+    /// <summary>Two-way bound by the General → DirectX combo. Mirrors <see cref="SettingsModel.DxLevel"/>.</summary>
+    public ChoiceOption? DxLevelSelected
+    {
+        get => DxLevelOptions.FirstOrDefault(o => Equals(o.Value, _currentSettings.DxLevel))
+               ?? DxLevelOptions.FirstOrDefault(o => Equals(o.Value, 95));
+        set
+        {
+            if (value == null) return;
+            var asInt = Convert.ToInt32(value.Value);
+            if (_currentSettings.DxLevel == asInt) return;
+            _currentSettings.DxLevel = asInt;
+            OnPropertyChanged();
+        }
+    }
+
+    // — Personalization bindings (proxied from ThemeManagerService) —
+
+    /// <summary>The live theme service — bound directly by the personalization UI.</summary>
+    public ThemeManagerService Theme => ServiceLocator.Theme;
+
+    /// <summary>
+    /// Schema-driven categories rendered into the dynamic ItemsControl. Built
+    /// once from <see cref="SettingsSchema"/> and never replaced — wrappers
+    /// inside it observe SettingsModel.PropertyChanged so external mutations
+    /// (Reset, preset apply) keep the UI in sync.
+    /// </summary>
+    public ObservableCollection<SettingCategory> SchemaCategories { get; } = new();
+
+    /// <summary>All sidebar nav entries (schema cats + fixed pages), in display order.</summary>
+    public ObservableCollection<SidebarEntry> SidebarEntries { get; } = new();
+
+    /// <summary>The currently highlighted sidebar entry, driven by the scroll position.</summary>
+    public string? ActiveSidebarId
+    {
+        get => _activeSidebarId;
+        set
+        {
+            if (SetProperty(ref _activeSidebarId, value))
+            {
+                foreach (var e in SidebarEntries)
+                    e.IsActive = string.Equals(e.Id, value, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+    private string? _activeSidebarId;
+
+    /// <summary>Raised when the user clicks a sidebar entry; the view animates the scroll to the matching anchor.</summary>
+    public event EventHandler<string>? ScrollToCategoryRequested;
 
     public ICommand ResetCommand { get; }
     public ICommand AddBindCommand { get; }
     public ICommand RemoveBindCommand { get; }
     public ICommand StartListeningCommand { get; }
     public ICommand BrowseFolderCommand { get; }
-    public ICommand SelectCategoryCommand { get; }
+    public ICommand NavigateCategoryCommand { get; }
+    public ICommand SelectThemeCommand { get; }
 
     private BindModel? _listeningBind;
 
@@ -195,8 +278,51 @@ public class SettingsViewModel : ViewModelBase
         RemoveBindCommand = new RelayCommand(o => RemoveBind(o));
         StartListeningCommand = new RelayCommand(o => StartListening(o));
         BrowseFolderCommand = new RelayCommand(o => BrowseFolder());
-        SelectCategoryCommand = new RelayCommand(o => { if (o is string cat) SelectedCategory = cat; });
+        NavigateCategoryCommand = new RelayCommand(o =>
+        {
+            if (o is SidebarEntry e) RequestScroll(e.Id);
+            else if (o is string id)  RequestScroll(id);
+        });
+
+        SelectThemeCommand = new RelayCommand(o =>
+        {
+            if (o is ThemeDefinition td) Theme.ApplyTheme(td.Id);
+            else if (o is string id) Theme.ApplyTheme(id);
+        });
+
+        BuildSchemaAndSidebar();
     }
+
+    /// <summary>
+    /// Builds the schema-driven categories and the unified sidebar list. The
+    /// fixed entries (General/Launcher/Personalization/Binds) are appended so
+    /// the sidebar can scroll to them too via the same anchor mechanism.
+    /// </summary>
+    private void BuildSchemaAndSidebar()
+    {
+        SchemaCategories.Clear();
+        foreach (var c in SettingsSchema.Build(_currentSettings))
+            SchemaCategories.Add(c);
+
+        SidebarEntries.Clear();
+        SidebarEntries.Add(new SidebarEntry { Id = "general", Title = "General" });
+        foreach (var c in SchemaCategories)
+            SidebarEntries.Add(new SidebarEntry { Id = c.Id, Title = c.Title });
+        SidebarEntries.Add(new SidebarEntry { Id = "launcher", Title = "Launcher" });
+        SidebarEntries.Add(new SidebarEntry { Id = "personalization", Title = "Personalization" });
+        SidebarEntries.Add(new SidebarEntry { Id = "binds", Title = "Binds" });
+
+        ActiveSidebarId = "general";
+    }
+
+    private void RequestScroll(string anchorId)
+    {
+        ActiveSidebarId = anchorId;
+        ScrollToCategoryRequested?.Invoke(this, anchorId);
+    }
+
+    /// <summary>Called by the view when the scroll position changes — updates the highlighted sidebar entry.</summary>
+    public void SyncActiveFromScroll(string anchorId) => ActiveSidebarId = anchorId;
 
     #region Display Mode
 
@@ -487,6 +613,10 @@ public class SettingsViewModel : ViewModelBase
             OnPropertyChanged(nameof(DisplayMode));
         }
 
+        // Mirror DxLevel back to the combo when a preset / reset changes it.
+        if (e.PropertyName == nameof(SettingsModel.DxLevel))
+            OnPropertyChanged(nameof(DxLevelSelected));
+
         if (e.PropertyName != nameof(SettingsModel.LaunchArgs))
         {
             try
@@ -587,6 +717,11 @@ public class SettingsViewModel : ViewModelBase
         SetValueFlag("-w", _currentSettings.Width.ToString(), true);
         SetValueFlag("-h", _currentSettings.Height.ToString(), true);
         SetValueFlag("-freq", _currentSettings.RefreshRate.ToString(), _currentSettings.RefreshRate != 60);
+        // -dxlevel applies once at startup and writes the value into video.txt.
+        // We always include it so the picker in General → Launch behavior is the
+        // single source of truth. Cleared automatically if the user later edits
+        // the launch options textbox and removes it manually.
+        SetValueFlag("-dxlevel", _currentSettings.DxLevel.ToString(), true);
 
         // Always make sure +exec autoexec.cfg is present so our generated cfg runs.
         if (!parts.Any(p => p.Equals("+exec", StringComparison.OrdinalIgnoreCase)
@@ -629,6 +764,13 @@ public class SettingsViewModel : ViewModelBase
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
 
+        // Schema wrappers held references to the OLD model — rebuild them
+        // against the new instance so toggles/sliders stay in sync.
+        BuildSchemaAndSidebar();
+
         Logger.LogInfo("[Settings] Reset all — defaults restored and persisted");
     }
 }
+
+
+

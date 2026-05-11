@@ -40,6 +40,9 @@ public class HomeFeedService
     private DateTime _newsCachedAt = DateTime.MinValue;
     private DateTime _modsCachedAt = DateTime.MinValue;
 
+    public bool LastSteamNewsLoadSucceeded { get; private set; }
+    public bool LastGameBananaLoadSucceeded { get; private set; }
+
     static HomeFeedService()
     {
         _http.DefaultRequestHeaders.UserAgent.ParseAdd(
@@ -77,11 +80,13 @@ public class HomeFeedService
 
             _cachedNews = items;
             _newsCachedAt = DateTime.UtcNow;
+            LastSteamNewsLoadSucceeded = true;
             Logger.LogInfo($"[HomeFeed] Loaded {items.Count} Steam news items");
             return items;
         }
         catch (Exception ex)
         {
+            LastSteamNewsLoadSucceeded = false;
             Logger.LogWarning($"[HomeFeed] Steam news fetch failed: {ex.Message}");
             return [];
         }
@@ -149,11 +154,13 @@ public class HomeFeedService
 
             _cachedMods = items;
             _modsCachedAt = DateTime.UtcNow;
+            LastGameBananaLoadSucceeded = true;
             Logger.LogInfo($"[HomeFeed] Loaded {items.Count} GameBanana mods (NSFW filtered)");
             return items;
         }
         catch (Exception ex)
         {
+            LastGameBananaLoadSucceeded = false;
             Logger.LogWarning($"[HomeFeed] GameBanana fetch failed: {ex.Message}");
             return [];
         }

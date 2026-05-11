@@ -34,11 +34,9 @@ public partial class App : Application
             _mutex = new Mutex(false, UiMutexName);
             if (!_mutex.WaitOne(0, false))
             {
-                MessageBox.Show(
-                    "Project Eternal Launcher já está em execução.\n\nPor favor, feche a instância atual antes de abrir outra.",
+                Views.MessageDialog.ShowError(
                     "Launcher Já em Execução",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
+                    "Project Eternal Launcher já está em execução.\n\nPor favor, feche a instância atual antes de abrir outra."
                 );
 
                 _mutex.Dispose();
@@ -75,6 +73,10 @@ public partial class App : Application
 
         // Elevated child runs without a UI; nothing to show.
         if (_isElevatedLauncherChild) return;
+
+        // Restore the user's saved theme before the window paints — this avoids
+        // a one-frame flash of the default Eternal palette on first render.
+        ServiceLocator.Theme.LoadFromConfig();
 
         // Normal UI startup — StartupUri was removed from App.xaml so we create
         // the window manually after services are initialized.
@@ -120,7 +122,7 @@ public partial class App : Application
         }
 
         string errorMsg = $"An unhandled exception occurred: {e.Exception.Message}\n\nStack Trace:\n{e.Exception.StackTrace}";
-        MessageBox.Show(errorMsg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        Views.MessageDialog.ShowError("Error", errorMsg);
 
         try
         {

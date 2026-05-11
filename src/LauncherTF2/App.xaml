@@ -13,25 +13,47 @@
         <core:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <core:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter"/>
         <core:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
+        <core:EqualsMultiConverter x:Key="EqualsMultiConverter"/>
 
-        <!-- Colors (With Alpha/Transparency for Acrylic effect) -->
-        <Color x:Key="BackgroundColor">#E618181b</Color>
-        <Color x:Key="SidebarColor">#E60f0f11</Color>
+        <!-- Colors (With Alpha/Transparency for Acrylic effect)
+             These define the *default* (Eternal Classic) palette. ThemeManager
+             swaps them at runtime by animating the matching SolidColorBrushes
+             below — don't add new color references without giving the brush a
+             matching ThemeDefinition slot. -->
+        <Color x:Key="BackgroundColor">#E60C1118</Color>
+        <Color x:Key="SidebarColor">#E6091018</Color>
         <Color x:Key="AccentColor">#ff6b00</Color> <!-- TF2 Orange -->
+        <Color x:Key="AccentGlowColor">#ff6b00</Color>
+        <Color x:Key="AccentForegroundColor">#ffffff</Color>
         <Color x:Key="TextColor">#ffffff</Color>
         <Color x:Key="SecondaryTextColor">#a1a1aa</Color>
-        <Color x:Key="CardColor">#27272a</Color>
+        <Color x:Key="CardColor">#171D29</Color>
+        <Color x:Key="PageTopColor">#111723</Color>
+        <Color x:Key="PageBottomColor">#0B0F16</Color>
+        <Color x:Key="SurfaceColor">#171D29</Color>
+        <Color x:Key="SurfaceAltColor">#1C2332</Color>
+        <Color x:Key="SurfaceInsetColor">#101521</Color>
+        <Color x:Key="BorderColor">#273149</Color>
 
         <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
         <SolidColorBrush x:Key="SidebarBrush" Color="{StaticResource SidebarColor}"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}"/>
+        <SolidColorBrush x:Key="AccentForegroundBrush" Color="{StaticResource AccentForegroundColor}"/>
         <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
         <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}"/>
         <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+        <LinearGradientBrush x:Key="PageBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="{StaticResource PageTopColor}" Offset="0"/>
+            <GradientStop Color="{StaticResource PageBottomColor}" Offset="1"/>
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+        <SolidColorBrush x:Key="SurfaceAltBrush" Color="{StaticResource SurfaceAltColor}"/>
+        <SolidColorBrush x:Key="SurfaceInsetBrush" Color="{StaticResource SurfaceInsetColor}"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
 
         <!-- Modern Button Style -->
         <Style x:Key="ModernButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="20,10"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -90,7 +112,7 @@
         <!-- Sidebar RadioButton Style -->
         <Style x:Key="SidebarButtonStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
             <Setter Property="Padding" Value="20,15"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -101,7 +123,7 @@
                         <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
                                 <!-- Icon placeholder (can be replaced with Path/Image) -->
-                                <Rectangle Width="4" Height="20" Fill="{StaticResource AccentBrush}" 
+                                <Rectangle Width="4" Height="20" Fill="{DynamicResource AccentBrush}" 
                                            Visibility="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Hidden}"
                                            Margin="-20,0,16,0"/>
                                 <ContentPresenter VerticalAlignment="Center"/>
@@ -112,7 +134,7 @@
                                 <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -124,7 +146,7 @@
         <!-- Modern ScrollBar Style -->
         <Style x:Key="ModernScrollBarStyle" TargetType="{x:Type ScrollBar}">
             <Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
-            <Setter Property="Foreground" Value="{StaticResource CardBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource CardBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Width" Value="8"/>
             <Setter Property="Template">
@@ -145,10 +167,10 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger SourceName="Thumb" Property="IsMouseOver" Value="true">
-                                <Setter Value="{StaticResource AccentBrush}" TargetName="Thumb" Property="Background"/>
+                                <Setter Value="{DynamicResource AccentBrush}" TargetName="Thumb" Property="Background"/>
                             </Trigger>
                             <Trigger SourceName="Thumb" Property="IsDragging" Value="true">
-                                <Setter Value="{StaticResource AccentBrush}" TargetName="Thumb" Property="Background"/>
+                                <Setter Value="{DynamicResource AccentBrush}" TargetName="Thumb" Property="Background"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="false">
                                 <Setter TargetName="Thumb" Property="Visibility" Value="Collapsed"/>

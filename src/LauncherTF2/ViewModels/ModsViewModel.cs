@@ -32,6 +32,8 @@ public class ModsViewModel : ViewModelBase
     private CancellationTokenSource? _enrichmentCts;
     private int _loadVersion;
 
+    public ThemeManagerService Theme => ServiceLocator.Theme;
+
     public ObservableCollection<ModModel> AllMods
     {
         get => _allMods;
@@ -135,7 +137,7 @@ public class ModsViewModel : ViewModelBase
         {
             if (o is ModModel mod)
             {
-                var confirmed = Views.ConfirmDialog.Show(
+                var confirmed = Views.MessageDialog.ShowConfirm(
                     "Remove Mod",
                     $"Are you sure you want to permanently remove \"{mod.Name}\"?\nThis will delete the mod files from your disk.");
 

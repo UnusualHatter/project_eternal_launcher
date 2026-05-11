@@ -10,7 +10,7 @@ namespace LauncherTF2.ViewModels;
 /// <summary>
 /// Backs the Home tab. Surfaces three pieces of state:
 ///   1. A friendly greeting (time-of-day + Windows username)
-///   2. Quick "is the launcher healthy?" indicators (TF2 / Steam / autoexec)
+///   2. Quick "is the launcher healthy?" indicators (TF2 install / Steam API / GameBanana API / mod count)
 ///   3. Live news + GameBanana feeds (existing).
 /// Quick-action commands open the relevant folders or trigger short utilities.
 /// </summary>
@@ -21,7 +21,8 @@ public class HomeViewModel : ViewModelBase
     private string _userName = string.Empty;
     private string _tagline = "Optimized and ready when you are.";
     private bool _tf2Detected;
-    private bool _steamDetected;
+    private bool _steamApiDetected;
+    private bool _gamebananaApiDetected;
     private bool _autoexecDetected;
     private int _modsCount;
 
@@ -58,10 +59,16 @@ public class HomeViewModel : ViewModelBase
         private set => SetProperty(ref _tf2Detected, value);
     }
 
-    public bool SteamDetected
+    public bool SteamApiDetected
     {
-        get => _steamDetected;
-        private set => SetProperty(ref _steamDetected, value);
+        get => _steamApiDetected;
+        private set => SetProperty(ref _steamApiDetected, value);
+    }
+
+    public bool GamebananaApiDetected
+    {
+        get => _gamebananaApiDetected;
+        private set => SetProperty(ref _gamebananaApiDetected, value);
     }
 
     public bool AutoexecDetected
@@ -108,7 +115,6 @@ public class HomeViewModel : ViewModelBase
     {
         var tfPath = GetTfPath();
         Tf2Detected = !string.IsNullOrWhiteSpace(tfPath) && Directory.Exists(tfPath);
-        SteamDetected = !string.IsNullOrWhiteSpace(ServiceLocator.SteamDetection.GetActiveSteamId());
         AutoexecDetected = Tf2Detected && File.Exists(Path.Combine(tfPath, "cfg", "autoexec.cfg"));
         ModsCount = CountMods(tfPath);
         Tagline = Tf2Detected
@@ -178,6 +184,8 @@ public class HomeViewModel : ViewModelBase
         }
         finally
         {
+            SteamApiDetected = ServiceLocator.HomeFeed.LastSteamNewsLoadSucceeded;
+            GamebananaApiDetected = ServiceLocator.HomeFeed.LastGameBananaLoadSucceeded;
             IsLoading = false;
         }
     }

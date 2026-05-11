@@ -121,6 +121,18 @@ public class SettingsService
                         {
                             _currentSettings = loadedSettings;
                             ValidateSettings(_currentSettings);
+
+                            // If the file is still on the very first-run defaults
+                            // (untouched 1920×1080@60) it's safe to re-detect the
+                            // user's display — they almost certainly didn't pick
+                            // those exact numbers on a 1440p / 144Hz panel.
+                            if (_currentSettings.Width == 1920 &&
+                                _currentSettings.Height == 1080 &&
+                                _currentSettings.RefreshRate == 60)
+                            {
+                                ApplyDetectedDisplay(_currentSettings);
+                            }
+
                             Logger.LogInfo("Settings loaded successfully");
                         }
                         else
@@ -139,6 +151,10 @@ public class SettingsService
                 {
                     Logger.LogInfo("Settings file not found, creating with defaults");
                     _currentSettings = new SettingsModel();
+                    // First run: seed resolution + refresh rate from the user's
+                    // actual primary display so the cfg doesn't ship 1920×1080@60
+                    // to a 1440p / 144Hz user.
+                    ApplyDetectedDisplay(_currentSettings);
                     SaveSettingsCore();
                 }
             }
@@ -163,7 +179,7 @@ public class SettingsService
         if (settings.Fov > 90) settings.Fov = 90;
 
         if (settings.ViewmodelFov < 50) settings.ViewmodelFov = 50;
-        if (settings.ViewmodelFov > 90) settings.ViewmodelFov = 90;
+        if (settings.ViewmodelFov > 120) settings.ViewmodelFov = 120;
 
         if (settings.MouseSensitivity < 0.1) settings.MouseSensitivity = 0.1;
         if (settings.MouseSensitivity > 30) settings.MouseSensitivity = 30;
@@ -185,6 +201,26 @@ public class SettingsService
 
         if (settings.Interp < 0) settings.Interp = 0;
         if (settings.Interp > 0.5) settings.Interp = 0.5;
+    }
+
+    /// <summary>
+    /// Overwrites <see cref="SettingsModel.Width"/> / <see cref="SettingsModel.Height"/>
+    /// / <see cref="SettingsModel.RefreshRate"/> with the primary display's
+    /// current mode. Called on first-run only — subsequent loads keep whatever
+    /// the user explicitly chose.
+    /// </summary>
+    private static void ApplyDetectedDisplay(SettingsModel settings)
+    {
+        var info = DisplayDetectionService.GetPrimaryDisplay();
+        if (info == null)
+        {
+            Logger.LogInfo("[Settings] Display auto-detect skipped — falling back to model defaults");
+            return;
+        }
+        settings.Width = info.Value.Width;
+        settings.Height = info.Value.Height;
+        settings.RefreshRate = info.Value.RefreshRate;
+        Logger.LogInfo($"[Settings] Auto-detected display: {settings.Width}x{settings.Height} @ {settings.RefreshRate}Hz");
     }
 
     public bool BackupSettings()

@@ -1,7 +1,7 @@
 namespace LauncherTF2.Models;
 
 /// <summary>
-/// Launcher-specific configuration (log level, tray behavior, etc.)
+/// Launcher-specific configuration (log level, tray behavior, theming, etc.)
 /// stored separately from TF2 game settings.
 ///
 /// First-run defaults: MinimizeToTrayOnLaunch, CloseToTray, and ShowNotifications
@@ -17,4 +17,8 @@ public class LauncherConfig
     public bool MinimizeToTrayOnLaunch { get; set; } = true;
     public bool CloseToTray { get; set; } = true;
     public bool ShowNotifications { get; set; } = true;
+
+    // — Personalization —
+    /// <summary>Theme ID picked in the Personalization section. Empty / unknown ID falls back to the default theme.</summary>
+    public string? SelectedThemeId { get; set; }
 }

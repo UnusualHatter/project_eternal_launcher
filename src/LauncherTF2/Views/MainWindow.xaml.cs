@@ -5,6 +5,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using LauncherTF2.Core;
+using LauncherTF2.Services;
 
 namespace LauncherTF2.Views;
 
@@ -26,21 +27,10 @@ public partial class MainWindow : Window
         _mainContentControl = FindName("MainContentControl") as System.Windows.Controls.ContentControl;
         _mainContentTransform = _mainContentControl?.RenderTransform as TranslateTransform;
 
-        // Load the packed logo64.ico for crisp multi-resolution tray rendering
-        try
-        {
-            var iconUri = new Uri("pack://application:,,,/Resources/Assets/logo64.ico", UriKind.Absolute);
-            var streamInfo = Application.GetResourceStream(iconUri);
-            if (streamInfo != null && _trayIcon != null)
-            {
-                using var stream = streamInfo.Stream;
-                _trayIcon.Icon = new System.Drawing.Icon(stream);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning("[MainWindow] Failed to load tray icon from packed resource", ex);
-        }
+        // Sync Window Icon natively
+        this.Icon = ServiceLocator.Theme.CurrentIconSource;
+        PropertyChangedEventManager.AddHandler(ServiceLocator.Theme, OnThemePropertyChanged, string.Empty);
+
 
         // Use WeakEventManager to avoid leaking a strong reference from the VM back to the View
         if (DataContext is LauncherTF2.ViewModels.MainViewModel vm)
@@ -49,6 +39,14 @@ public partial class MainWindow : Window
         }
 
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnThemePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName == nameof(ThemeManagerService.CurrentIconSource))
+        {
+            this.Icon = ServiceLocator.Theme.CurrentIconSource;
+        }
     }
 
     // Swaps the PropertyChanged subscription when DataContext changes

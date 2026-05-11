@@ -12,8 +12,7 @@
         Title="Eternal TF2 Launcher" Height="720" Width="1280"
         MinWidth="1280" MinHeight="720"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BackgroundBrush}"
-        Icon="/Resources/Assets/logo64.ico">
+        Background="{DynamicResource BackgroundBrush}">
 
     <!-- WindowChrome gives us a custom title bar + native rounded corners (Win11)
          WITHOUT the AllowsTransparency=True layered-window hack, which was breaking
@@ -48,7 +47,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Border Background="{StaticResource BackgroundBrush}" BorderBrush="#333" BorderThickness="1">
+    <Border Background="{DynamicResource BackgroundBrush}" BorderBrush="#333" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/> <!-- Top Bar -->
@@ -56,15 +55,15 @@
             </Grid.RowDefinitions>
 
             <!-- Custom Top Bar — WindowChrome handles dragging the caption area natively -->
-            <Grid Grid.Row="0" Background="#111">
+            <Grid Grid.Row="0" Background="{DynamicResource SurfaceInsetBrush}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Eternal TF2" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="SemiBold" IsHitTestVisible="False"/>
+                <TextBlock Grid.Column="0" Text="Eternal TF2" Foreground="#8B94A9" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="SemiBold" IsHitTestVisible="False"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Content="—" Width="40" Background="Transparent" Foreground="#aaa" BorderThickness="0" Click="MinimizeButton_Click"/>
-                    <Button Content="X" Width="40" Background="Transparent" Foreground="#aaa" BorderThickness="0" Click="CloseButton_Click"/>
+                    <Button Content="—" Width="40" Background="Transparent" Foreground="#A7B0C5" BorderThickness="0" Click="MinimizeButton_Click"/>
+                    <Button Content="X" Width="40" Background="Transparent" Foreground="#A7B0C5" BorderThickness="0" Click="CloseButton_Click"/>
                 </StackPanel>
             </Grid>
 
@@ -76,7 +75,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- System Tray Icon -->
-        <tb:TaskbarIcon x:Name="TrayIcon" ToolTipText="Eternal TF2 Launcher" DoubleClickCommand="{Binding RestoreWindowCommand}">
+        <tb:TaskbarIcon x:Name="TrayIcon" IconSource="{Binding Theme.CurrentIconSource, NotifyOnTargetUpdated=True}" ToolTipText="Eternal TF2 Launcher" DoubleClickCommand="{Binding RestoreWindowCommand}">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Open" Command="{Binding RestoreWindowCommand}"/>
@@ -90,10 +89,7 @@
             <!-- Home Background (Default Visible) -->
             <Border x:Name="HomeBackground" Opacity="1">
                 <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#E60f0f11" Offset="0.0"/>
-                        <GradientStop Color="#00000000" Offset="1.0"/>
-                    </LinearGradientBrush>
+                    <DynamicResource ResourceKey="SidebarBrush"/>
                 </Border.Background>
                 <Border.Style>
                     <Style TargetType="Border">
@@ -120,7 +116,7 @@
             </Border>
 
             <!-- Normal Background (Default Hidden) -->
-            <Border x:Name="NormalBackground" Background="{StaticResource SidebarBrush}" Opacity="0">
+            <Border x:Name="NormalBackground" Background="{DynamicResource SidebarBrush}" Opacity="0">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Style.Triggers>
@@ -146,11 +142,31 @@
             </Border>
 
             <StackPanel>
-                <!-- Logo Area -->
-                <Image Source="/Resources/Assets/logo.png" Height="60" Margin="0,30,0,50" HorizontalAlignment="Center">
+                <!-- Logo Area — bound to ThemeManager so it crossfades on theme swap.
+                     The DropShadow color reads AccentColor via DynamicResource so the
+                     glow tracks the active accent (theme or custom override). -->
+                <Image x:Name="LogoImage"
+                       Source="{Binding Theme.CurrentLogoSource, NotifyOnTargetUpdated=True}"
+                       Height="60" Margin="0,30,0,50" HorizontalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality">
                     <Image.Effect>
-                        <DropShadowEffect Color="{StaticResource AccentColor}" BlurRadius="10" ShadowDepth="0"/>
+                        <DropShadowEffect Color="{DynamicResource AccentGlowColor}" BlurRadius="14" ShadowDepth="0"/>
                     </Image.Effect>
+                    <Image.Style>
+                        <Style TargetType="Image">
+                            <Style.Triggers>
+                                <!-- Quick fade whenever the bound logo source changes. -->
+                                <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1" Duration="0:0:0.45"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Image.Style>
                 </Image>
 
                 <!-- Navigation -->

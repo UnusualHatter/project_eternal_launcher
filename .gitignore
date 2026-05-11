@@ -23,9 +23,14 @@
 **/launcher_config.json
 **/settings.json
 **/mod_thumbnails/
+**/price_cache.json
+**/logs/
 
 # Local scratch files
 src/LauncherTF2/temp.json
+
+# AI assistant local config (per-machine, not shared)
+.claude/
 
 # OS files
 Thumbs.db

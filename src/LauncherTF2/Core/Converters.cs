@@ -70,6 +70,23 @@ public class StringNotEmptyToVisibilityConverter : IValueConverter
     }
 }
 
+/// <summary>
+/// Multi-binding equality: returns true when both bound values stringify to the
+/// same thing. Used by the Personalization theme cards to highlight the active
+/// theme without forcing UI state onto the ThemeDefinition model.
+/// </summary>
+public class EqualsMultiConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values == null || values.Length < 2) return false;
+        return string.Equals(values[0]?.ToString(), values[1]?.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 public class InverseBooleanConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

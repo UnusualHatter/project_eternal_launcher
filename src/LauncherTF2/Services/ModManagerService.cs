@@ -277,7 +277,7 @@ public class ModManagerService
                 ModPath = vpkPath,
                 LastModified = fileInfo.LastWriteTime,
                 ModType = ModType.Vpk,
-                ThumbnailPath = "/Resources/Assets/logo.png",
+                ThumbnailPath = "/Resources/Assets/logo_classic.png",
                 SizeBytes = totalSize,
                 Categories = new ObservableCollection<string> { "VPK" }
             };
@@ -324,7 +324,7 @@ public class ModManagerService
 
             // Thumbnail
             var thumbnail = Directory.GetFiles(folderPath, "*.png", SearchOption.TopDirectoryOnly)
-                                .FirstOrDefault() ?? "/Resources/Assets/logo.png";
+                                .FirstOrDefault() ?? "/Resources/Assets/logo_classic.png";
 
             // Folder size
             long folderSize = 0;

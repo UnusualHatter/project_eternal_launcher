@@ -19,6 +19,7 @@ Both files are kept in sync with the actual code. If anything here contradicts t
 - **Mods:** filesystem-based under `tf/custom/` (enabled) and `tf/custom/disabled/` (disabled). Multi-file VPK sets are handled as a unit by `ModManagerService` — see `IsVpkChunkFile`, `ToggleMod`, and `RemoveMod`.
 - **Logging:** bracketed module prefix (`[Game]`, `[Mods]`, `[InventoryPricing]`, …). Goes to `app_debug.log` next to the exe with size-based rotation.
 - **Caches that age out:** `mod_metadata_cache.json` and `mod_thumbnails/` (7 days, includes negative entries), `price_cache.json` (2 hours), `tf2_inventory_cache.json` (10 minutes), in-memory feed cache (15 minutes).
+- **Settings schema:** TF2 cvar surface is declarative in `Services/SettingsSchema.cs` (one `SettingItem` per cvar). Adding a setting = one model property + one schema entry. Both the UI (data-templated `ItemsControl`) and `AutoexecWriter` consume the same schema. `AutoexecParser` mirrors every `CustomEmitter` so an existing user autoexec round-trips into the UI on first run. See CLAUDE.md for full details.
 
 ## Build
 
