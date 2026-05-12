@@ -31,7 +31,7 @@ public class SettingsModel : ViewModelBase
     private bool _noTextureStream;
     private bool _disableReplay;
     private bool _softParticlesOff;
-    private int _dxLevel = 95;
+    private int _dxLevel = 90;
 
     private bool _fullscreen = true;
     private bool _windowed;

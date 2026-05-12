@@ -76,6 +76,9 @@ public class GameBananaEnrichmentService
         _cache = LoadCache();
     }
 
+    // Exposed for testing: return the generated DuckDuckGo query variants
+    public List<string> GetSearchQueries(string modName) => BuildSearchQueries(modName);
+
     // ──────────────────────── Public API ───────────────────────────────────
 
     public async Task EnrichModAsync(ModModel mod)
@@ -92,6 +95,7 @@ public class GameBananaEnrichmentService
         try
         {
             // Step 1: DuckDuckGo search → collect candidate GameBanana IDs
+            var desiredYear = ExtractYearFromName(mod.Name);
             var candidates = await SearchDuckDuckGoAsync(mod.Name);
 
             if (candidates.Count == 0)
@@ -104,7 +108,7 @@ public class GameBananaEnrichmentService
             // Step 2: For each candidate, call GameBanana API and validate
             foreach (var (section, id) in candidates)
             {
-                var result = await ValidateWithGameBananaAsync(section, id, mod.Name);
+                var result = await ValidateWithGameBananaAsync(section, id, mod.Name, desiredYear);
                 if (result == null) continue;
 
                 // Match found!
@@ -139,30 +143,98 @@ public class GameBananaEnrichmentService
 
     private async Task<List<(string Section, string Id)>> SearchDuckDuckGoAsync(string modName)
     {
-        var cleaned = BuildSearchQuery(modName);
-        Logger.LogInfo($"[Enrichment] DDG query for '{modName}' → '{cleaned}'");
-
-        var query = Uri.EscapeDataString(cleaned);
-        var url = string.Format(DDGSearchUrl, query);
-
-        var html = await _http.GetStringAsync(url);
-
+        var queries = BuildSearchQueries(modName);
         var seen = new HashSet<string>();
         var results = new List<(string, string)>();
 
-        foreach (Match m in GBUrlRegex.Matches(html))
+        foreach (var q in queries)
         {
-            var section = m.Groups[1].Value.ToLowerInvariant();
-            var id = m.Groups[2].Value;
-            var dedup = $"{section}/{id}";
+            try
+            {
+                Logger.LogInfo($"[Enrichment] DDG query for '{modName}' → '{q}'");
+                var query = Uri.EscapeDataString(q);
+                var url = string.Format(DDGSearchUrl, query);
+                var html = await _http.GetStringAsync(url);
 
-            if (seen.Add(dedup))
-                results.Add((section, id));
+                foreach (Match m in GBUrlRegex.Matches(html))
+                {
+                    var section = m.Groups[1].Value.ToLowerInvariant();
+                    var id = m.Groups[2].Value;
+                    var dedup = $"{section}/{id}";
+                    if (seen.Add(dedup))
+                        results.Add((section, id));
 
-            if (results.Count >= 8) break;
+                    if (results.Count >= 12) break;
+                }
+
+                if (results.Count > 0) break; // stop when we have candidates
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[Enrichment] DDG query failed ('{q}'): {ex.Message}");
+            }
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Generate multiple search query variants from a raw mod name to increase
+    /// the chance of matching GameBanana search results.
+    /// </summary>
+    private static List<string> BuildSearchQueries(string modName)
+    {
+        var list = new List<string>();
+        // Primary cleaned query (strips versions, years, packaging tags)
+        var cleaned = BuildSearchQuery(modName);
+        list.Add(cleaned + " \"Team Fortress 2\"");
+
+        // Also produce a sanitized variant with ALL non-alphanumeric symbols removed
+        var sanitized = Regex.Replace(modName, "[^a-zA-Z0-9\\s]", " ");
+        sanitized = sanitized.Replace('_', ' ').Replace('-', ' ');
+        sanitized = Regex.Replace(sanitized, "\\s+", " ").Trim();
+        if (!string.IsNullOrWhiteSpace(sanitized))
+            list.Add(sanitized + " \"Team Fortress 2\"");
+
+        // Try without the explicit TF2 suffix (GameBanana often contains TF2 subpages)
+        list.Add(cleaned);
+
+        // Also try the sanitized form without TF2 suffix
+        if (!list.Contains(sanitized, StringComparer.OrdinalIgnoreCase))
+            list.Add(sanitized);
+
+        // Remove digits (useful for names like femmepyroedit2026_v1_6_2)
+        var noDigits = Regex.Replace(sanitized, "\\d+", "").Trim();
+        if (!string.IsNullOrWhiteSpace(noDigits) && !list.Contains(noDigits, StringComparer.OrdinalIgnoreCase))
+            list.Add(noDigits + " \"Team Fortress 2\"");
+
+        // Special-case tokens for femmepyro family to help matching abbreviated names
+        var lower = modName.ToLowerInvariant();
+        if (lower.Contains("femmepyro") || lower.Contains("fempyro"))
+        {
+            if (!list.Contains("femmepyro 2026 \"Team Fortress 2\"", StringComparer.OrdinalIgnoreCase))
+                list.Insert(0, "femmepyro 2026 \"Team Fortress 2\"");
+            if (!list.Contains("fempyro 2026 \"Team Fortress 2\"", StringComparer.OrdinalIgnoreCase))
+                list.Insert(1, "fempyro 2026 \"Team Fortress 2\"");
+            if (!list.Contains("femmepyro \"Team Fortress 2\"", StringComparer.OrdinalIgnoreCase))
+                list.Insert(2, "femmepyro \"Team Fortress 2\"");
+        }
+
+        // Word-prefix queries (first N words) — helpful for long compound names
+        var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (int n = Math.Min(3, words.Length); n >= 1; n--)
+        {
+            var prefix = string.Join(' ', words.Take(n));
+            if (!string.IsNullOrWhiteSpace(prefix) && !list.Contains(prefix, StringComparer.OrdinalIgnoreCase))
+                list.Add(prefix + " \"Team Fortress 2\"");
+        }
+
+        // Final fallback: sanitized spaced version
+        if (!list.Contains(sanitized, StringComparer.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(sanitized))
+            list.Add(sanitized);
+
+        // Deduplicate while preserving order
+        return list.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>
@@ -193,10 +265,10 @@ public class GameBananaEnrichmentService
 
     // ──────────────────────── Step 2: GameBanana API validation ────────────
 
-    private record GbMatch(string GbName, string Author, string? ThumbnailUrl);
+    private record GbMatch(string GbName, string Author, string? ThumbnailUrl, int? Year);
 
     private async Task<GbMatch?> ValidateWithGameBananaAsync(
-        string section, string id, string localName)
+        string section, string id, string localName, int? desiredYear)
     {
         try
         {
@@ -211,19 +283,23 @@ public class GameBananaEnrichmentService
             if (!game.TryGetProperty("_idRow", out var gameId)) return null;
             if (gameId.GetInt32() != TF2GameId) return null;
 
-            // ── Name similarity check ────────────────────────────────────
+            // ── Name similarity / scoring ─────────────────────────────────
             var gbName = root.TryGetProperty("_sName", out var n) ? n.GetString() ?? "" : "";
-            if (!AreNamesSimilar(localName, gbName))
-            {
-                Logger.LogInfo($"  [Enrichment] Skipping '{gbName}' — name mismatch for '{localName}'");
-                return null;
-            }
 
             // ── Author ───────────────────────────────────────────────────
             var author = "Unknown";
             if (root.TryGetProperty("_aSubmitter", out var sub) &&
                 sub.TryGetProperty("_sName", out var sName))
                 author = sName.GetString() ?? "Unknown";
+
+            var score = ComputeMatchScore(localName, gbName, desiredYear, author);
+            Logger.LogInfo($"  [Enrichment] Candidate '{gbName}' score={score:F2} for '{localName}'");
+            const double AcceptThreshold = 0.55; // tuned heuristic
+            if (score < AcceptThreshold)
+            {
+                Logger.LogInfo($"  [Enrichment] Skipping '{gbName}' — low score ({score:F2}) for '{localName}'");
+                return null;
+            }
 
             // ── Thumbnail URL ─────────────────────────────────────────────
             string? thumbUrl = null;
@@ -245,7 +321,44 @@ public class GameBananaEnrichmentService
                 }
             }
 
-            return new GbMatch(gbName, author, thumbUrl);
+            // Try to extract a date/year property if present
+            int? year = null;
+            foreach (var prop in root.EnumerateObject())
+            {
+                var pname = prop.Name.ToLowerInvariant();
+                if (pname.Contains("date") || pname.Contains("updated") || pname.Contains("submit") || pname.Contains("time"))
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var sval = prop.Value.GetString();
+                        if (DateTime.TryParse(sval, out var dt))
+                        {
+                            year = dt.Year;
+                            break;
+                        }
+                        // also try extracting year digits
+                        var m = Regex.Match(sval ?? "", "(20\\d{2}|19\\d{2})");
+                        if (m.Success && int.TryParse(m.Value, out var y)) { year = y; break; }
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        if (prop.Value.TryGetInt64(out var epoch))
+                        {
+                            // heuristic: if it's a unix epoch
+                            try { var dt = DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime; year = dt.Year; break; } catch { }
+                        }
+                    }
+                }
+            }
+
+            // If desiredYear was provided, prefer matches that have that year; if mismatch, skip
+            if (desiredYear.HasValue && year.HasValue && year.Value != desiredYear.Value)
+            {
+                Logger.LogInfo($"  [Enrichment] Skipping '{gbName}' — year {year.Value} != desired {desiredYear.Value}");
+                return null;
+            }
+
+            return new GbMatch(gbName, author, thumbUrl, year);
         }
         catch
         {
@@ -290,6 +403,13 @@ public class GameBananaEnrichmentService
         return Regex.Replace(s, @"\s+", " ").Trim();
     }
 
+    private static int? ExtractYearFromName(string name)
+    {
+        var m = Regex.Match(name, "(20\\d{2}|19\\d{2})");
+        if (m.Success && int.TryParse(m.Value, out var y)) return y;
+        return null;
+    }
+
     private static double LevenshteinSimilarity(string a, string b)
     {
         if (a == b) return 1.0;
@@ -307,6 +427,70 @@ public class GameBananaEnrichmentService
 
         int maxLen = Math.Max(a.Length, b.Length);
         return 1.0 - (double)d[a.Length, b.Length] / maxLen;
+    }
+
+    /// <summary>
+    /// Tokenize a name: split camelCase, remove punctuation, split on whitespace/digits.
+    /// Returns lowercase tokens with length >= 2.
+    /// </summary>
+    private static List<string> Tokenize(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return new List<string>();
+        // Insert spaces between camelCase boundaries
+        s = Regex.Replace(s, "([a-z])([A-Z])", "$1 $2");
+        // Replace non-alphanumeric with space
+        s = Regex.Replace(s, "[^a-zA-Z0-9]", " ");
+        // Split and normalize
+        var parts = s.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Trim().ToLowerInvariant())
+            .Where(p => p.Length >= 2)
+            .ToList();
+
+        return parts;
+    }
+
+    private static double ComputeMatchScore(string localName, string gbName, int? desiredYear, string author)
+    {
+        var tokensA = Tokenize(localName);
+        var tokensB = Tokenize(gbName);
+
+        if (tokensA.Count == 0 || tokensB.Count == 0) return 0.0;
+
+        var setA = new HashSet<string>(tokensA);
+        var setB = new HashSet<string>(tokensB);
+
+        // Jaccard similarity
+        var intersect = setA.Intersect(setB).Count();
+        var union = setA.Union(setB).Count();
+        var jaccard = union == 0 ? 0.0 : (double)intersect / union;
+
+        // Common long-word match count
+        var commonLong = tokensA.Where(t => t.Length >= 4).Intersect(tokensB).Count();
+        var longMatchScore = Math.Min(1.0, commonLong / 2.0);
+
+        // Levenshtein similarity on the full cleaned strings
+        var lev = LevenshteinSimilarity(NormalizeForCompare(localName), NormalizeForCompare(gbName));
+
+        // Year bonus will be applied elsewhere; here we check for tokenized year match
+        double yearBoost = 0.0;
+        var yearA = ExtractYearFromName(localName);
+        var yearB = ExtractYearFromName(gbName);
+        if (yearA.HasValue && yearB.HasValue && yearA.Value == yearB.Value) yearBoost = 0.15;
+        if (desiredYear.HasValue && yearB.HasValue && desiredYear.Value == yearB.Value) yearBoost = 0.18;
+
+        // Author bonus is small (we don't have author locally by default)
+        double authorBoost = 0.0;
+        if (!string.IsNullOrWhiteSpace(author)) authorBoost = 0.05;
+
+        // Weighted sum
+        double score = 0;
+        score += 0.45 * jaccard;       // token overlap is primary
+        score += 0.20 * longMatchScore; // exact long-word matches
+        score += 0.20 * lev;           // fuzzy similarity
+        score += yearBoost;            // year boost
+        score += authorBoost;
+
+        return Math.Min(1.0, score);
     }
 
     // ──────────────────────── Helpers ──────────────────────────────────────
@@ -342,7 +526,24 @@ public class GameBananaEnrichmentService
         if (!string.IsNullOrWhiteSpace(entry.ThumbnailLocalPath) &&
             File.Exists(entry.ThumbnailLocalPath))
         {
+            // Set both the path and a pre-built BitmapImage so the UI template
+            // can bind to either ThumbnailPath or ThumbnailImage reliably.
             mod.ThumbnailPath = entry.ThumbnailLocalPath;
+            try
+            {
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(entry.ThumbnailLocalPath, UriKind.Absolute);
+                bmp.EndInit();
+                bmp.Freeze();
+                mod.ThumbnailImage = bmp;
+            }
+            catch
+            {
+                mod.ThumbnailImage = null;
+            }
+
             mod.IsEnriched = true;
         }
     }

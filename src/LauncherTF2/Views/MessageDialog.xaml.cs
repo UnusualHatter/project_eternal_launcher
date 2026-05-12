@@ -19,6 +19,15 @@ public partial class MessageDialog : Window
             CancelButton.Visibility = Visibility.Visible;
         }
 
+        // Inherit the application's theme resources so the dialog respects color scheme
+        if (Application.Current?.Resources.MergedDictionaries != null)
+        {
+            foreach (var dict in Application.Current.Resources.MergedDictionaries)
+            {
+                Resources.MergedDictionaries.Add(dict);
+            }
+        }
+
         // Allow dragging
         MouseLeftButtonDown += (_, e) =>
         {

@@ -166,17 +166,40 @@
                          falls back to ThumbnailPath (pack URI / local path) otherwise -->
                     <Border Grid.Row="0" CornerRadius="12,12,0,0" Background="{DynamicResource SurfaceBrush}">
                         <Grid>
-                            <Image Stretch="Uniform" Source="{Binding DataContext.Theme.CurrentLogoSource, RelativeSource={RelativeSource AncestorType=UserControl}}" Opacity="0.15" Margin="20"/>
+                            <!-- Themed logo placeholder – visible only when no thumbnail is available -->
+                            <Image x:Name="PlaceholderLogo" Stretch="Uniform" Source="{Binding DataContext.Theme.CurrentLogoSource, RelativeSource={RelativeSource AncestorType=UserControl}}" Opacity="0.15" Margin="20">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <!-- Show placeholder only when no thumbnail and not enriched -->
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsEnriched}" Value="False"/>
+                                                    <Condition Binding="{Binding ThumbnailImage}" Value="{x:Null}"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
                             <Image x:Name="CardThumbnail" Stretch="UniformToFill">
                             <Image.Style>
                                 <Style TargetType="Image">
                                     <Setter Property="Opacity" Value="0.7"/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                     <!-- Default: use ThumbnailPath (pack URI) -->
                                     <Setter Property="Source" Value="{Binding ThumbnailPath}"/>
                                     <Style.Triggers>
-                                        <!-- When enriched: switch to pre-built BitmapImage (no TypeConverter / URI cache issues) -->
+                                        <!-- Show when enrichment applied -->
                                         <DataTrigger Binding="{Binding IsEnriched}" Value="True">
                                             <Setter Property="Source" Value="{Binding ThumbnailImage}"/>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <!-- If a ThumbnailPath string exists, show it too -->
+                                        <DataTrigger Binding="{Binding ThumbnailPath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" Value="Visible">
+                                            <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                         <!-- Smooth fade-in on enrichment -->
                                         <DataTrigger Binding="{Binding IsEnriched}" Value="True">
@@ -295,14 +318,36 @@
                          pre-built BitmapImage once GameBanana enrichment lands. -->
                     <Border Grid.Column="0" Width="44" Height="44" CornerRadius="8" Background="{DynamicResource SurfaceInsetBrush}">
                         <Grid>
-                            <Image Stretch="Uniform" Source="{Binding DataContext.Theme.CurrentLogoSource, RelativeSource={RelativeSource AncestorType=UserControl}}" Opacity="0.15" Margin="6"/>
+                            <!-- Themed logo placeholder – visible only when no thumbnail is available -->
+                            <Image x:Name="ListPlaceholderLogo" Stretch="Uniform" Source="{Binding DataContext.Theme.CurrentLogoSource, RelativeSource={RelativeSource AncestorType=UserControl}}" Opacity="0.15" Margin="6">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <!-- Show placeholder only when no thumbnail and not enriched -->
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsEnriched}" Value="False"/>
+                                                    <Condition Binding="{Binding ThumbnailImage}" Value="{x:Null}"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
                             <Image Stretch="UniformToFill">
                             <Image.Style>
                                 <Style TargetType="Image">
                                     <Setter Property="Source" Value="{Binding ThumbnailPath}"/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsEnriched}" Value="True">
                                             <Setter Property="Source" Value="{Binding ThumbnailImage}"/>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ThumbnailPath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" Value="Visible">
+                                            <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Windows;
 
@@ -58,6 +59,11 @@ public static class ScrollAnchor
         if (host == null) return;
         var reg = Registries.GetValue(host, _ => new ConcurrentDictionary<string, FrameworkElement>(StringComparer.OrdinalIgnoreCase));
         reg[name] = fe;
+        try
+        {
+            LauncherTF2.Core.Logger.LogDebug($"[ScrollAnchor] Registered anchor '{name}' under host {host.GetType().Name}");
+        }
+        catch { }
     }
 
     private static void Unregister(FrameworkElement fe, string name)
@@ -87,6 +93,11 @@ public static class ScrollAnchor
     {
         if (Registries.TryGetValue(host, out var reg) && reg.TryGetValue(name, out var fe))
             return fe;
+        try
+        {
+            LauncherTF2.Core.Logger.LogDebug($"[ScrollAnchor] Could not find anchor '{name}' under host {host.GetType().Name}");
+        }
+        catch { }
         return null;
     }
 
@@ -94,6 +105,6 @@ public static class ScrollAnchor
     public static IEnumerable<KeyValuePair<string, FrameworkElement>> All(DependencyObject host)
     {
         if (Registries.TryGetValue(host, out var reg)) return reg.ToArray();
-        return [];
+        return Array.Empty<KeyValuePair<string, FrameworkElement>>();
     }
 }

@@ -20,11 +20,6 @@ public partial class SettingsView : UserControl
         DataContextChanged += OnDataContextChanged;
     }
 
-    /// <summary>
-    /// Subscribes to the VM's <c>ScrollToCategoryRequested</c> event so a
-    /// sidebar click can trigger a smooth scroll without the VM holding
-    /// a reference to the visual tree.
-    /// </summary>
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_vm != null) _vm.ScrollToCategoryRequested -= OnScrollRequested;
@@ -39,20 +34,19 @@ public partial class SettingsView : UserControl
         AnimatedScrollHelper.ScrollToElement(ContentScroller, target);
     }
 
-    /// <summary>
-    /// Drives the IsActive highlight in the sidebar by figuring out which
-    /// anchor sits closest to (but at or above) the viewport top. This is
-    /// resilient to dynamically generated categories because anchors register
-    /// themselves with <see cref="ScrollAnchor"/> on Loaded.
-    /// </summary>
     private void ContentScroller_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (_vm == null) return;
 
-        var top = ContentScroller.VerticalOffset;
-        // A small lead-in so the new category lights up just as it's about to enter the viewport.
-        const double viewportLead = 80;
+        // Skip the active-section recompute while AnimatedScrollHelper is driving
+        // the offset — every animation frame fires ScrollChanged, and recomputing
+        // would strobe the sidebar highlight through every section we cross.
+        // The helper keeps IsAnimating true for 2 extra dispatcher frames after
+        // the animation ends to drain late events, so we can rely on it solely.
+        if (AnimatedScrollHelper.IsAnimating(ContentScroller)) return;
 
+        var top = ContentScroller.VerticalOffset;
+        const double viewportLead = 80;
         string? bestId = null;
         double bestY = double.NegativeInfinity;
 
@@ -63,28 +57,19 @@ public partial class SettingsView : UserControl
                 var content = ContentScroller.Content as Visual;
                 if (content == null) continue;
                 var y = fe.TransformToVisual(content).Transform(new Point(0, 0)).Y;
-                if (y <= top + viewportLead && y > bestY)
-                {
-                    bestY = y;
-                    bestId = id;
-                }
+                if (y <= top + viewportLead && y > bestY) { bestY = y; bestId = id; }
             }
-            catch
-            {
-                // Element not in the visual tree yet — skip.
-            }
+            catch { }
         }
 
-        if (!string.IsNullOrEmpty(bestId)) _vm.SyncActiveFromScroll(bestId!);
+        if (!string.IsNullOrEmpty(bestId))
+            _vm.SyncActiveFromScroll(bestId);
     }
 
-    /// <summary>Click handler for preset chips inside the PresetSetting DataTemplate.</summary>
     private void PresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement fe) return;
         if (fe.Tag is not string id) return;
-        // The button's DataContext is the PresetOption; walk up to find the PresetSetting.
-        var parent = fe.DataContext;
         var preset = FindPresetSetting(fe);
         preset?.ApplyById(id);
     }
@@ -97,7 +82,6 @@ public partial class SettingsView : UserControl
             if (p is FrameworkElement fe && fe.DataContext is PresetSetting ps) return ps;
             p = LogicalTreeHelper.GetParent(p);
         }
-        // Fall back to visual tree if logical traversal missed (ItemsControl can detach logical scope).
         var v = start;
         while (v != null)
         {

@@ -36,6 +36,95 @@ public class ModManagerService
     }
 
     /// <summary>
+    /// Search for a likely thumbnail image file next to a VPK file.
+    /// Returns an empty string when none found.
+    /// </summary>
+    private string FindLocalThumbnailForFile(string filePath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(filePath) ?? string.Empty;
+            var baseName = Path.GetFileNameWithoutExtension(filePath);
+
+            // Common sibling names: mymod.png, mymod.jpg
+            var candidates = new[] { 
+                baseName + ".png", baseName + ".jpg", baseName + ".jpeg", baseName + ".webp" };
+
+            foreach (var c in candidates)
+            {
+                var p = Path.Combine(dir, c);
+                if (File.Exists(p)) return p;
+            }
+
+            // Fallback: any image file in same folder with typical names
+            var prox = Directory.GetFiles(dir, "*.*", SearchOption.TopDirectoryOnly)
+                        .Where(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(f => new FileInfo(f).Length)
+                        .FirstOrDefault();
+
+            return prox ?? string.Empty;
+        }
+        catch { return string.Empty; }
+    }
+
+    /// <summary>
+    /// Heuristic search for thumbnails inside a mod folder.
+    /// Prioritize files that match common preview names and larger file sizes.
+    /// Returns empty string if none found.
+    /// </summary>
+    private string FindLocalThumbnailForFolder(string folderPath)
+    {
+        try
+        {
+            if (!Directory.Exists(folderPath)) return string.Empty;
+
+            // Look for common filenames at top level first
+            var topCandidates = new[] { "thumbnail.png", "thumbnail.jpg", "preview.png", "preview.jpg", "cover.png", "cover.jpg", "icon.png", "icon.jpg", "preview.webp" };
+            foreach (var name in topCandidates)
+            {
+                var p = Path.Combine(folderPath, name);
+                if (File.Exists(p)) return p;
+            }
+
+            // Look for any image directly under folder (not too deep)
+            var imgs = Directory.GetFiles(folderPath, "*.png", SearchOption.TopDirectoryOnly)
+                        .Concat(Directory.GetFiles(folderPath, "*.jpg", SearchOption.TopDirectoryOnly))
+                        .Concat(Directory.GetFiles(folderPath, "*.jpeg", SearchOption.TopDirectoryOnly))
+                        .Concat(Directory.GetFiles(folderPath, "*.webp", SearchOption.TopDirectoryOnly))
+                        .ToList();
+
+            if (imgs.Count > 0)
+            {
+                // Prefer the largest file (likely a preview image)
+                return imgs.OrderByDescending(f => new FileInfo(f).Length).First();
+            }
+
+            // Search common subfolders (materials, media, images)
+            var subfolders = new[] { "materials", "media", "images", "textures" };
+            foreach (var sub in subfolders)
+            {
+                var subPath = Path.Combine(folderPath, sub);
+                if (!Directory.Exists(subPath)) continue;
+                var found = Directory.GetFiles(subPath, "*.*", SearchOption.AllDirectories)
+                            .Where(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                            .OrderByDescending(f => new FileInfo(f).Length)
+                            .FirstOrDefault();
+                if (!string.IsNullOrEmpty(found)) return found;
+            }
+
+            // Last resort: any image anywhere under the folder (but avoid scanning huge trees extensively)
+            var any = Directory.GetFiles(folderPath, "*.png", SearchOption.AllDirectories)
+                        .Concat(Directory.GetFiles(folderPath, "*.jpg", SearchOption.AllDirectories))
+                        .Concat(Directory.GetFiles(folderPath, "*.jpeg", SearchOption.AllDirectories))
+                        .OrderByDescending(f => new FileInfo(f).Length)
+                        .FirstOrDefault();
+
+            return any ?? string.Empty;
+        }
+        catch { return string.Empty; }
+    }
+
+    /// <summary>
     /// Resolves the TF2 custom folder path from the shared SettingsService
     /// instead of re-parsing settings.json directly.
     /// </summary>
@@ -268,6 +357,9 @@ public class ModManagerService
                     .Sum(f => new FileInfo(f).Length);
             }
 
+            // Try to find a local thumbnail sibling (mymod.png/jpg) next to the vpk
+            var localThumb = FindLocalThumbnailForFile(vpkPath);
+
             return new ModModel
             {
                 Name = displayName,
@@ -277,7 +369,7 @@ public class ModManagerService
                 ModPath = vpkPath,
                 LastModified = fileInfo.LastWriteTime,
                 ModType = ModType.Vpk,
-                ThumbnailPath = "/Resources/Assets/logo_classic.png",
+                ThumbnailPath = localThumb,
                 SizeBytes = totalSize,
                 Categories = new ObservableCollection<string> { "VPK" }
             };
@@ -322,9 +414,8 @@ public class ModManagerService
                 catch { /* use defaults */ }
             }
 
-            // Thumbnail
-            var thumbnail = Directory.GetFiles(folderPath, "*.png", SearchOption.TopDirectoryOnly)
-                                .FirstOrDefault() ?? "/Resources/Assets/logo_classic.png";
+            // Thumbnail — search common candidate filenames and subfolders
+            var thumbnail = FindLocalThumbnailForFolder(folderPath);
 
             // Folder size
             long folderSize = 0;

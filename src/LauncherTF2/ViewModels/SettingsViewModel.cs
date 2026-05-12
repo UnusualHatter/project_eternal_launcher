@@ -18,7 +18,7 @@ namespace LauncherTF2.ViewModels;
 public sealed class SidebarEntry : ViewModelBase
 {
     private bool _isActive;
-    public string Id { get; init; } = "";
+    public string Id { get; init; } = "";   
     public string Title { get; init; } = "";
     public bool IsActive { get => _isActive; set => SetProperty(ref _isActive, value); }
 }
@@ -168,9 +168,9 @@ public class SettingsViewModel : ViewModelBase
     [
         new ChoiceOption("DirectX 8.1 — Low-end PCs / laptops", 81,
             "Highest FPS. Disables skins / war paints and may cause minor visual bugs (grayed-out level badges)."),
-        new ChoiceOption("DirectX 9.0 — Balanced", 90,
+        new ChoiceOption("DirectX 9.0 — Recommended", 90,
             "Good balance for better graphics while maintaining decent performance."),
-        new ChoiceOption("DirectX 9.5 — Recommended", 95,
+        new ChoiceOption("DirectX 9.5 — Best Graphics", 95,
             "For modern computers. Very stable, full quality, supports skins / war paints + all modern visuals."),
     ];
 
@@ -178,7 +178,7 @@ public class SettingsViewModel : ViewModelBase
     public ChoiceOption? DxLevelSelected
     {
         get => DxLevelOptions.FirstOrDefault(o => Equals(o.Value, _currentSettings.DxLevel))
-               ?? DxLevelOptions.FirstOrDefault(o => Equals(o.Value, 95));
+               ?? DxLevelOptions.FirstOrDefault(o => Equals(o.Value, 90));
         set
         {
             if (value == null) return;
@@ -273,7 +273,16 @@ public class SettingsViewModel : ViewModelBase
         _currentSettings.PropertyChanged += CurrentSettings_PropertyChanged;
         _currentSettings.Binds.CollectionChanged += (s, e) => _settingsService.SaveSettings(_currentSettings);
 
-        ResetCommand = new RelayCommand(o => Reset());
+        ResetCommand = new RelayCommand(o =>
+        {
+            if (Views.MessageDialog.ShowConfirm(
+                "Reset All Settings",
+                "This will restore all settings to their default values.\n\nAre you sure?",
+                "Reset"))
+            {
+                Reset();
+            }
+        });
         AddBindCommand = new RelayCommand(o => AddBind());
         RemoveBindCommand = new RelayCommand(o => RemoveBind(o));
         StartListeningCommand = new RelayCommand(o => StartListening(o));
