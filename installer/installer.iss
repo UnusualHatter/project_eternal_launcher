@@ -179,43 +179,53 @@ const
   DotNetDownloadUrl =
     'https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe';
 
-// Detect .NET 8 x64 Desktop Runtime via two independent strategies so the
-// check works regardless of how the user installed .NET:
+// Detect .NET 8 x64 Desktop Runtime.
 //
-//   1. Registry value names  — the .NET installer writes a string value named
-//      after the version (e.g. "8.0.10") under the sharedfx key. Earlier
-//      versions of the check used RegGetSubkeyNames, which is wrong — the
-//      versions are VALUES, not sub-keys.
+// Previous attempts failed because:
+//   - RegGetSubkeyNames: wrong — versions are VALUES, not sub-keys
+//   - GetEnv('ProgramFiles'): wrong in a 32-bit installer process — resolves
+//     to C:\Program Files (x86), not C:\Program Files
 //
-//   2. File system fallback  — check for the well-known installation directory
-//      C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\
-//      This works even when the registry key is absent (e.g. xcopy deploys).
-//
-// Either strategy returning True is sufficient.
+// This version uses {commonpf64}, Inno Setup's own constant for the 64-bit
+// Program Files folder.  It always resolves to C:\Program Files on x64
+// Windows regardless of whether the installer process is 32-bit or 64-bit.
+// The registry check uses the same key but also tries sub-key enumeration
+// for both the value-name and sub-key layouts used by different .NET versions.
 function IsDotNet8DesktopInstalled(): Boolean;
 var
   KeyPath:    String;
-  ValueNames: TArrayOfString;
+  Names:      TArrayOfString;
   I:          Integer;
   FindRec:    TFindRec;
   BaseDir:    String;
 begin
-  Result  := False;
+  Result := False;
 
-  // Strategy 1: registry VALUE names (not sub-keys)
   KeyPath := 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\'
            + 'Microsoft.WindowsDesktop.App';
 
-  if RegGetValueNames(HKLM, KeyPath, ValueNames) then
-    for I := 0 to GetArrayLength(ValueNames) - 1 do
-      if (Length(ValueNames[I]) >= 2) and (Copy(ValueNames[I], 1, 2) = '8.') then
+  // Registry — try value names (layout used by recent .NET installers)
+  if RegGetValueNames(HKLM, KeyPath, Names) then
+    for I := 0 to GetArrayLength(Names) - 1 do
+      if (Length(Names[I]) >= 2) and (Copy(Names[I], 1, 2) = '8.') then
       begin
         Result := True;
         Exit;
       end;
 
-  // Strategy 2: file system — covers xcopy/custom-path installs
-  BaseDir := GetEnv('ProgramFiles')
+  // Registry — try sub-key names (layout used by some older .NET installers)
+  if RegGetSubkeyNames(HKLM, KeyPath, Names) then
+    for I := 0 to GetArrayLength(Names) - 1 do
+      if (Length(Names[I]) >= 2) and (Copy(Names[I], 1, 2) = '8.') then
+      begin
+        Result := True;
+        Exit;
+      end;
+
+  // File system — {commonpf64} is always C:\Program Files on x64 Windows,
+  // even from a 32-bit installer process (unlike %ProgramFiles% which can
+  // be C:\Program Files (x86) in a 32-bit process context).
+  BaseDir := ExpandConstant('{commonpf64}')
            + '\dotnet\shared\Microsoft.WindowsDesktop.App\';
 
   if FindFirst(BaseDir + '8.*', FindRec) then
