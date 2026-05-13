@@ -37,6 +37,7 @@ public sealed class ChoiceSetting : SettingItem, IDisposable
     {
         _model = model;
         _modelProperty = modelProperty;
+        PropertyName = modelProperty;
         _get = get;
         _set = set;
         _model.PropertyChanged += OnModelPropertyChanged;

@@ -44,7 +44,8 @@
   <ItemGroup>
     <Resource Include="..\..\resources\Assets\**\*.png" LinkBase="Resources\Assets" />
     <Resource Include="..\..\resources\Assets\**\*.ico" LinkBase="Resources\Assets" />
-    <Content Include="Resources\**" Exclude="Resources\Assets\**\*.png;Resources\Assets\**\*.ico">
+    <EmbeddedResource Include="Resources\Profiles\*.json" />
+    <Content Include="Resources\**" Exclude="Resources\Assets\**\*.png;Resources\Assets\**\*.ico;Resources\Profiles\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

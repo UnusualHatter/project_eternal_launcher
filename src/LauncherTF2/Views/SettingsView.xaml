@@ -309,52 +309,6 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type settings:PresetSetting}">
-            <Border Background="{DynamicResource SurfaceInsetBrush}" CornerRadius="8" Padding="14,10" Margin="0,4,0,10">
-                <StackPanel>
-                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding Description}" Style="{StaticResource DescStyle}" Margin="0,2,0,8"
-                               Visibility="{Binding Description, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"/>
-                    <ItemsControl ItemsSource="{Binding Presets}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Margin="0,0,8,8" Padding="14,8"
-                                        Background="{DynamicResource SurfaceBrush}"
-                                        BorderThickness="1"
-                                        BorderBrush="{DynamicResource BorderBrush}"
-                                        Foreground="{DynamicResource TextBrush}"
-                                        Cursor="Hand"
-                                        Click="PresetButton_Click"
-                                        Tag="{Binding Id}"
-                                        ToolTip="{Binding Description}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="bg" CornerRadius="6" Padding="{TemplateBinding Padding}"
-                                                    Background="{TemplateBinding Background}"
-                                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                                    BorderThickness="{TemplateBinding BorderThickness}">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
 
         <!-- One full category panel — a Border + nested ItemsControl of its items. -->
         <DataTemplate DataType="{x:Type settings:SettingCategory}">
@@ -404,6 +358,51 @@
                 <!-- ─── General (fixed: TF2 path, display, launch options) ─── -->
                 <StackPanel core:ScrollAnchor.Name="general" core:ScrollAnchor.Host="{Binding ElementName=ContentScroller}" Margin="0,0,0,30">
                     <TextBlock Text="General" Style="{StaticResource SectionHeaderStyle}" FontSize="20"/>
+
+                    <Border Background="#1e4d8c" CornerRadius="8" Padding="14,10" Margin="0,0,0,12" Visibility="{Binding ShowProfileMigrationBanner, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Command="{Binding DismissMigrationBannerCommand}" Background="Transparent" Foreground="White" BorderThickness="0" Cursor="Hand" VerticalAlignment="Center" FontSize="16" Width="30" Height="30"/>
+                            <StackPanel>
+                                <TextBlock Text="We've upgraded to the new Profile system." Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                <TextBlock Text="Your settings have been preserved. Choose a profile below, or keep your current settings." Foreground="#d0e2f5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Profile" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableProfiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" VerticalAlignment="Center" Height="34"/>
+                                <Button Grid.Column="2" Content="Apply" Command="{Binding ApplyProfileCommand}" Style="{StaticResource ModernButtonStyle}" Background="{DynamicResource AccentBrush}" Foreground="White" Padding="20,0" Height="34"/>
+                                <Button Grid.Column="4" Content="Manage Profiles..." Command="{Binding OpenProfileManagerCommand}" Style="{StaticResource ModernButtonStyle}" Background="{DynamicResource SurfaceInsetBrush}" Padding="16,0" Height="34"/>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentProfile}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <Ellipse Fill="#ef5350" Width="8" Height="8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Custom settings active" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
                     <Border Background="{DynamicResource CardBrush}" CornerRadius="8" Padding="18" Margin="0,0,0,12">
                         <StackPanel>

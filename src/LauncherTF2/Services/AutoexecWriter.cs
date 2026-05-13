@@ -91,6 +91,13 @@ public class AutoexecWriter
 
     private static string BuildManagedBlock(SettingsModel settings)
     {
+        // Build a default-value reference model once.  Each setting's current value is
+        // compared against it before writing.  Settings that are still at their launcher
+        // default are omitted from the managed block — the user's own autoexec section
+        // handles those.  This prevents "restore-to-default" noise lines (e.g. r_eyemove 1,
+        // r_dynamic 1) from duplicating or fighting the user's hand-written config.
+        var defaults = new SettingsModel();
+
         var sb = new StringBuilder();
 
         sb.AppendLine("// Auto-generated. Toggles in the Eternal Launcher write to this block;");
@@ -99,11 +106,16 @@ public class AutoexecWriter
 
         foreach (var cat in SettingsSchema.Build(settings))
         {
-            // Build the lines first so we can skip the whole header when a category emits nothing.
-            var lines = cat.Items
-                .SelectMany(item => item.EmitCvarLines())
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .ToList();
+            var lines = new List<string>();
+
+            foreach (var item in cat.Items)
+            {
+                if (Equals(item.GetValue(settings), item.GetValue(defaults))) continue;
+
+                foreach (var line in item.EmitCvarLines())
+                    if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
+            }
+
             if (lines.Count == 0) continue;
 
             sb.AppendLine($"// --- {cat.AutoexecLabel} ---");

@@ -19,6 +19,7 @@ public static class ServiceLocator
     public static InventoryPricingService Pricing { get; private set; } = null!;
     public static InventoryImageCache ImageCache { get; private set; } = null!;
     public static ThemeManagerService Theme { get; private set; } = null!;
+    public static ProfileService Profile { get; private set; } = null!;
 
     /// <summary>
     /// Wires up all shared services. Must be called once during app startup.
@@ -35,6 +36,7 @@ public static class ServiceLocator
         Pricing = new InventoryPricingService();
         ImageCache = new InventoryImageCache();
         Theme = new ThemeManagerService(Settings);
+        Profile = new ProfileService();
 
         Logger.LogInfo("[ServiceLocator] All services initialized successfully");
     }

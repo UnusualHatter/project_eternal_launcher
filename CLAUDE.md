@@ -100,7 +100,7 @@ Behavior:
 
 ### Settings schema (data-driven UI + autoexec)
 
-The TF2-cvar surface is described declaratively in `Services/SettingsSchema.cs` as a tree of `SettingCategory → SettingItem` nodes (toggle / slider / choice / preset). Each `SettingItem` wraps one property on `SettingsModel` through a getter/setter delegate pair, so the underlying JSON shape and migration path stays unchanged when new settings are added.
+The TF2-cvar surface is described declaratively in `Services/SettingsSchema.cs` as a tree of `SettingCategory → SettingItem` nodes (toggle / slider / choice). Each `SettingItem` wraps one property on `SettingsModel` through its `PropertyName`, so the underlying JSON shape and migration path stays unchanged when new settings are added.
 
 Key properties on `SettingItem`:
 
@@ -112,15 +112,19 @@ Key properties on `SettingItem`:
 Adding a new TF2 setting:
 
 1. Add a property to `SettingsModel` with a safe default. Old `settings.json` files keep loading — missing properties just fall through to the default.
-2. Append a `ToggleSetting` / `SliderSetting` / `ChoiceSetting` / `PresetSetting` to the relevant category in `SettingsSchema.Build`. That's the only file you need to touch — the UI is data-driven and `AutoexecWriter` reads the schema too.
+2. Append a `ToggleSetting` / `SliderSetting` / `ChoiceSetting` to the relevant category in `SettingsSchema.Build`. That's the only file you need to touch — the UI is data-driven and `AutoexecWriter` reads the schema too.
 3. If the cvar semantics inverts the user-facing toggle, set `CustomEmitter` to format the lines the way TF2 expects, and add a parse case to `AutoexecParser` that mirrors the inversion.
 
-Presets live in `Services/SettingsPresets.cs`:
+### Profile system
 
-- `PerformancePresets.Apply{MaxFps,Competitive,Balanced,HighQuality}` bulk-apply curated profiles.
-- `NetworkPresets.Apply{Casual,Competitive,HighPing,Lan}` bulk-tune `cl_interp` / `rate` / `cmdrate`.
+Profiles live in `src/LauncherTF2/Services/ProfileService.cs`:
 
-Each preset mutates only the cvars it owns; the model's `PropertyChanged` notifications propagate to every wrapper, so all affected rows refresh in place without a full rebind.
+- Built-in profiles are embedded JSON resources in `Resources/Profiles/`.
+- User-created profiles are stored as individual JSON files in `%APPDATA%/Eternal TF2 Launcher/profiles/user/`.
+- `ProfileService.ApplyProfile()` captures a full snapshot of the `SettingsModel` state for restoration on failure.
+- `ProfileService.DetectCurrentProfile()` identifies which profile matches the current live settings (with tie-breaking for user vs built-in).
+
+Applying a profile mutates the model properties; the `PropertyChanged` notifications propagate to every UI row, keeping the view in sync without a full rebind.
 
 ### Autoexec generation + parsing
 
@@ -218,6 +222,7 @@ Behavior:
 - `tf2_inventory_cache.json` — cached backpack data.
 - `mod_metadata_cache.json` — GameBanana metadata cache.
 - `mod_thumbnails/` — local thumbnail image cache.
+- `profiles/user/` — user-created profile JSON files.
 - `app_debug.log` — rotating log file.
 - `crash_log.txt` — crash dump text.
 
@@ -237,7 +242,7 @@ These are versioned assets and should not be replaced casually.
 ## 5. Coding Conventions That Matter Here
 
 - Prefer `ServiceLocator` for all shared service access.
-- Keep logging bracketed, e.g. `[Game]`, `[Mods]`, `[InventoryPricing]`.
+- Keep logging bracketed, e.g. `[Game]`, `[Mods]`, `[InventoryPricing]`, `[Profile]`.
 - Continue using async methods with `Async` suffix.
 - Keep shared mutable state behind `lock` or interlocked gates.
 - Do not put blocking waits on the UI thread.

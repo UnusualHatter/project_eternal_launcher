@@ -13,7 +13,7 @@ public class SettingsService
 
     public SettingsService()
     {
-        _settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+        _settingsPath = GamePaths.SettingsPath;
         LoadSettings();
     }
 
@@ -293,8 +293,7 @@ public class SettingsService
 
     // ─────────── Launcher-specific configuration (separate from TF2 settings) ───────────
 
-    private static readonly string LauncherConfigPath =
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_config.json");
+    private static readonly string LauncherConfigPath = GamePaths.LauncherConfigPath;
 
     public LauncherConfig GetLauncherConfig()
     {

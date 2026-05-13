@@ -181,18 +181,7 @@ internal static class SettingsSchema
             AutoexecLabel = "Performance",
         };
 
-        cat.Items.Add(new PresetSetting(m, nameof(m.PerformancePreset), () => m.PerformancePreset, v => m.PerformancePreset = v)
-        {
-            Title = "Performance preset",
-            Description = "Bulk-apply a curated profile. Individual toggles below remain editable.",
-            Presets =
-            [
-                new PresetOption("MaxFps",  "Maximum FPS",  "Strip everything cosmetic for raw frames.", PerformancePresets.ApplyMaxFps),
-                new PresetOption("Competitive", "Competitive", "Clean visuals, all gameplay-relevant info kept.", PerformancePresets.ApplyCompetitive),
-                new PresetOption("Balanced",   "Balanced",   "Sensible defaults — fps + look.", PerformancePresets.ApplyBalanced),
-                new PresetOption("HighQuality","High Quality","Eye candy on, frame-rate second.", PerformancePresets.ApplyHighQuality),
-            ],
-        });
+        // Removed PresetSetting for Performance
 
         cat.Items.Add(new SliderSetting(m, nameof(m.FpsMax), () => m.FpsMax, v => m.FpsMax = (int)v)
         {
@@ -430,18 +419,7 @@ internal static class SettingsSchema
             AutoexecLabel = "Network",
         };
 
-        cat.Items.Add(new PresetSetting(m, nameof(m.NetworkPreset), () => m.NetworkPreset, v => m.NetworkPreset = v)
-        {
-            Title = "Network preset",
-            Description = "Bulk-tune cl_interp / rate / cmdrate for typical scenarios.",
-            Presets =
-            [
-                new PresetOption("Casual",      "Casual",      "Forgiving interp, default rate. Good for public servers.", NetworkPresets.ApplyCasual),
-                new PresetOption("Competitive", "Competitive", "Tight interp + 66 tick. Ideal for league servers.",        NetworkPresets.ApplyCompetitive),
-                new PresetOption("HighPing",    "High Ping",   "Loose interp to mask packet loss on bad connections.",     NetworkPresets.ApplyHighPing),
-                new PresetOption("LAN",         "LAN",         "Minimum interp, maximum updaterate. LAN only.",            NetworkPresets.ApplyLan),
-            ],
-        });
+        // Removed PresetSetting for Network
 
         cat.Items.Add(new SliderSetting(m, nameof(m.Interp), () => m.Interp, v => m.Interp = v)
         {

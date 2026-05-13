@@ -66,30 +66,7 @@ public partial class SettingsView : UserControl
             _vm.SyncActiveFromScroll(bestId);
     }
 
-    private void PresetButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement fe) return;
-        if (fe.Tag is not string id) return;
-        var preset = FindPresetSetting(fe);
-        preset?.ApplyById(id);
-    }
 
-    private static PresetSetting? FindPresetSetting(DependencyObject start)
-    {
-        var p = LogicalTreeHelper.GetParent(start);
-        while (p != null)
-        {
-            if (p is FrameworkElement fe && fe.DataContext is PresetSetting ps) return ps;
-            p = LogicalTreeHelper.GetParent(p);
-        }
-        var v = start;
-        while (v != null)
-        {
-            if (v is FrameworkElement fe2 && fe2.DataContext is PresetSetting ps2) return ps2;
-            v = VisualTreeHelper.GetParent(v);
-        }
-        return null;
-    }
 
     private void SettingsView_KeyDown(object sender, KeyEventArgs e)
     {

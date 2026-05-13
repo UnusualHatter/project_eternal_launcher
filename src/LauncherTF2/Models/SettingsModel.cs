@@ -1,14 +1,64 @@
-﻿using LauncherTF2.Core;
+using LauncherTF2.Core;
 using System.Collections.ObjectModel;
+using System.IO;
+using Microsoft.Win32;
 
 namespace LauncherTF2.Models;
 
 /// <summary>
-/// Default Steam TF2 directory used as fallback across the application.
+/// Path resolution for the launcher and TF2 files.
+/// Attempts to detect Steam installation from registry, falling back to a common default.
 /// </summary>
 public static class GamePaths
 {
-    public const string DefaultTf2Path = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf";
+    private static string? _cachedTf2Path;
+    
+    public const string AppName = "Eternal TF2 Launcher";
+    public static string AppDataPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
+    public static string UserProfilesPath => Path.Combine(AppDataPath, "profiles", "user");
+    public static string SettingsPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    public static string LauncherConfigPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_config.json");
+
+    /// <summary>
+    /// Attempts to auto-detect the TF2 installation path from the Steam registry,
+    /// then falls back to a common default if detection fails.
+    /// Returns the path to the 'tf' directory (not the Steam root).
+    /// </summary>
+    public static string DefaultTf2Path
+    {
+        get
+        {
+            if (_cachedTf2Path != null)
+                return _cachedTf2Path;
+
+            try
+            {
+                // Try to get Steam installation path from registry
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+                if (key != null)
+                {
+                    var steamPath = key.GetValue("SteamPath") as string;
+                    if (!string.IsNullOrWhiteSpace(steamPath))
+                    {
+                        var tf2Path = Path.Combine(steamPath, "steamapps", "common", "Team Fortress 2", "tf");
+                        if (Directory.Exists(tf2Path))
+                        {
+                            _cachedTf2Path = tf2Path;
+                            return tf2Path;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fall through to default on any exception
+            }
+
+            // Fallback to common default installation path
+            _cachedTf2Path = @"C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf";
+            return _cachedTf2Path;
+        }
+    }
 }
 
 /// <summary>
@@ -67,7 +117,6 @@ public class SettingsModel : ViewModelBase
     private int _interpRatio = 2;
     private bool _smoothEnabled = true;
     private int _predOptimize = 2;
-    private string? _networkPreset = "Casual";
 
     // ─── Gameplay extensions (new, default to current TF2 defaults) ───
     private bool _hudFastSwitch = true;
@@ -92,7 +141,6 @@ public class SettingsModel : ViewModelBase
     private bool _disableDynamicLights;
     private bool _disablePyroland;
     private bool _disableDecals;
-    private string? _performancePreset = "Balanced";
 
     // ─── FPS cap + visual quality (Performance) ───
     private int _fpsMaxMenu = 60;
@@ -162,7 +210,6 @@ public class SettingsModel : ViewModelBase
     public int InterpRatio { get => _interpRatio; set => SetProperty(ref _interpRatio, value); }
     public bool SmoothEnabled { get => _smoothEnabled; set => SetProperty(ref _smoothEnabled, value); }
     public int PredOptimize { get => _predOptimize; set => SetProperty(ref _predOptimize, value); }
-    public string? NetworkPreset { get => _networkPreset; set => SetProperty(ref _networkPreset, value); }
 
     // ─── Gameplay extensions ───
     public bool HudFastSwitch { get => _hudFastSwitch; set => SetProperty(ref _hudFastSwitch, value); }
@@ -187,7 +234,6 @@ public class SettingsModel : ViewModelBase
     public bool DisableDynamicLights { get => _disableDynamicLights; set => SetProperty(ref _disableDynamicLights, value); }
     public bool DisablePyroland { get => _disablePyroland; set => SetProperty(ref _disablePyroland, value); }
     public bool DisableDecals { get => _disableDecals; set => SetProperty(ref _disableDecals, value); }
-    public string? PerformancePreset { get => _performancePreset; set => SetProperty(ref _performancePreset, value); }
     public int FpsMaxMenu { get => _fpsMaxMenu; set => SetProperty(ref _fpsMaxMenu, value); }
     public bool MatSpecular { get => _matSpecular; set => SetProperty(ref _matSpecular, value); }
     public bool MatPhong { get => _matPhong; set => SetProperty(ref _matPhong, value); }

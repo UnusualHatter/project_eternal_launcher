@@ -23,6 +23,7 @@ public abstract class SettingItem : INotifyPropertyChanged
 {
     public string Title { get; init; } = "";
     public string Description { get; init; } = "";
+    public string PropertyName { get; protected set; } = "";
     /// <summary>Primary cvar name — used in tooltips and the autoexec comment header for this row.</summary>
     public string Cvar { get; init; } = "";
     /// <summary>True for settings the user should only touch knowingly. UI may collapse/hide these behind an Advanced toggle.</summary>
@@ -73,4 +74,29 @@ public abstract class SettingItem : INotifyPropertyChanged
     /// should return an empty enumerable to keep the cfg lean.
     /// </summary>
     public virtual IEnumerable<string> EmitCvarLines() => [];
+
+    public object? GetValue(SettingsModel source)
+    {
+        if (string.IsNullOrEmpty(PropertyName)) return null;
+        var prop = typeof(SettingsModel).GetProperty(PropertyName);
+        return prop?.GetValue(source);
+    }
+
+    public void SetValue(SettingsModel target, object? value)
+    {
+        if (string.IsNullOrEmpty(PropertyName)) return;
+        var prop = typeof(SettingsModel).GetProperty(PropertyName);
+        if (prop == null) return;
+
+        if (value is System.Text.Json.JsonElement element)
+        {
+            var parsed = System.Text.Json.JsonSerializer.Deserialize(element.GetRawText(), prop.PropertyType);
+            prop.SetValue(target, parsed);
+        }
+        else if (value != null)
+        {
+            var converted = Convert.ChangeType(value, prop.PropertyType, System.Globalization.CultureInfo.InvariantCulture);
+            prop.SetValue(target, converted);
+        }
+    }
 }

@@ -32,6 +32,9 @@ src/LauncherTF2/temp.json
 # AI assistant local config (per-machine, not shared)
 .claude/
 
+# AI-generated session reports (not part of the codebase)
+antigravity.md
+
 # OS files
 Thumbs.db
 .DS_Store

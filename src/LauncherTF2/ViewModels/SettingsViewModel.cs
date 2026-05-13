@@ -27,6 +27,7 @@ public class SettingsViewModel : ViewModelBase
 {
     private readonly SettingsService _settingsService;
     private readonly AutoexecParser _autoexecParser;
+    private readonly ProfileService _profileService;
     private SettingsModel _currentSettings;
 
     // Launcher configuration properties
@@ -154,6 +155,41 @@ public class SettingsViewModel : ViewModelBase
 
     #endregion
 
+    #region Profiles
+
+    private Profile? _currentProfile;
+    private Profile? _selectedProfile;
+
+    /// <summary>The profile that exactly matches the current settings state (or null if "Custom").</summary>
+    public Profile? CurrentProfile
+    {
+        get => _currentProfile;
+        private set => SetProperty(ref _currentProfile, value);
+    }
+
+    /// <summary>The profile currently selected in the dropdown.</summary>
+    public Profile? SelectedProfile
+    {
+        get => _selectedProfile;
+        set => SetProperty(ref _selectedProfile, value);
+    }
+
+    public ObservableCollection<Profile> AvailableProfiles { get; } = new();
+
+    public ICommand ApplyProfileCommand { get; }
+    public ICommand SaveAsProfileCommand { get; }
+    public ICommand OpenProfileManagerCommand { get; }
+    public ICommand DismissMigrationBannerCommand { get; }
+
+    private bool _showProfileMigrationBanner;
+    public bool ShowProfileMigrationBanner
+    {
+        get => _showProfileMigrationBanner;
+        set => SetProperty(ref _showProfileMigrationBanner, value);
+    }
+
+    #endregion
+
     public string[] LogLevels { get; } = ["Debug", "Info", "Warning", "Error"];
     public string[] DisplayModes { get; } = ["Fullscreen", "Windowed", "Borderless Windowed"];
 
@@ -254,7 +290,7 @@ public class SettingsViewModel : ViewModelBase
 
         _currentSettings = _settingsService.GetSettings();
 
-        if (string.IsNullOrEmpty(_currentSettings.SteamPath) || _currentSettings.SteamPath == @"C:\Program Files (x86)\Steam")
+        if (string.IsNullOrEmpty(_currentSettings.SteamPath))
         {
             _currentSettings.SteamPath = GamePaths.DefaultTf2Path;
         }
@@ -265,6 +301,12 @@ public class SettingsViewModel : ViewModelBase
         }
 
         _autoexecParser.LoadFromAutoexec(_currentSettings, _currentSettings.SteamPath);
+
+        _profileService = ServiceLocator.Profile;
+        _profileService.LoadAllProfiles();
+        RefreshProfiles();
+
+        ShowProfileMigrationBanner = _profileService.IsFirstRunMigration;
 
         LoadLauncherSettings();
         SyncDisplayModeFromModel();
@@ -298,6 +340,11 @@ public class SettingsViewModel : ViewModelBase
             if (o is ThemeDefinition td) Theme.ApplyTheme(td.Id);
             else if (o is string id) Theme.ApplyTheme(id);
         });
+
+        ApplyProfileCommand = new RelayCommand(o => ApplySelectedProfile(), o => SelectedProfile != null && SelectedProfile != CurrentProfile);
+        SaveAsProfileCommand = new RelayCommand(o => SaveCurrentAsProfile());
+        OpenProfileManagerCommand = new RelayCommand(o => OpenProfileManager());
+        DismissMigrationBannerCommand = new RelayCommand(o => ShowProfileMigrationBanner = false);
 
         BuildSchemaAndSidebar();
     }
@@ -777,8 +824,83 @@ public class SettingsViewModel : ViewModelBase
         // against the new instance so toggles/sliders stay in sync.
         BuildSchemaAndSidebar();
 
+        RefreshProfiles();
+
         Logger.LogInfo("[Settings] Reset all — defaults restored and persisted");
     }
+
+    #region Profile Logic
+
+    public void RefreshProfiles()
+    {
+        var prevSelected = SelectedProfile;
+
+        AvailableProfiles.Clear();
+        foreach (var p in _profileService.GetBuiltInProfiles()) AvailableProfiles.Add(p);
+        foreach (var p in _profileService.GetUserProfiles()) AvailableProfiles.Add(p);
+
+        CurrentProfile = _profileService.DetectCurrentProfile(_currentSettings);
+
+        if (CurrentProfile != null)
+        {
+            // Always select the live-matched profile so the combo reflects reality.
+            SelectedProfile = AvailableProfiles.FirstOrDefault(p => p.Id == CurrentProfile.Id) ?? CurrentProfile;
+        }
+        else if (prevSelected != null && AvailableProfiles.Any(p => p.Id == prevSelected.Id))
+        {
+            // Custom state — keep the combo on whatever was last selected so it doesn't jump to blank.
+            SelectedProfile = AvailableProfiles.First(p => p.Id == prevSelected.Id);
+        }
+        // else: first run with no matching profile — leave SelectedProfile as-is (null).
+    }
+
+    private void ApplySelectedProfile()
+    {
+        if (SelectedProfile == null) return;
+        
+        try
+        {
+            _profileService.ApplyProfile(SelectedProfile, _currentSettings);
+            _settingsService.SaveSettings(_currentSettings);
+            RefreshProfiles();
+        }
+        catch (Exception ex)
+        {
+            // The service already rolled back the model on failure.
+            // In a full app, we would show a toast/dialog here.
+            Logger.LogError($"Failed to apply profile: {ex.Message}");
+        }
+    }
+
+    private void SaveCurrentAsProfile()
+    {
+        var dialog = new Views.InputDialog("Save Current Settings", "Profile Name:", "My Profile", true)
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        var p = _profileService.CreateUserProfile(dialog.InputText, dialog.DescriptionText, _currentSettings);
+        RefreshProfiles();
+        SelectedProfile = p;
+    }
+
+    private void OpenProfileManager()
+    {
+        var vm = new ProfileManagerViewModel(_profileService, _currentSettings);
+        var win = new Views.ProfileManagerView(vm)
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+        win.ShowDialog();
+        
+        // Profiles might have been created/deleted/applied
+        RefreshProfiles();
+        // Since ApplyProfile might have been called, save just in case
+        _settingsService.SaveSettings(_currentSettings);
+    }
+
+    #endregion
 }
 
 
