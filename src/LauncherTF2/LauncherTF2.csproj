@@ -28,15 +28,22 @@
     <PackageReference Include="SharpCompress" Version="0.48.0" />
   </ItemGroup>
 
-  <!-- Native executables used by the launcher (steam/pure patchers) -->
+  <!-- Native executables used by the launcher (steam/pure patchers).
+       ExcludeFromSingleFile=true keeps them as loose files next to the
+       launcher exe — they have their own UAC manifests and must be invocable
+       via their on-disk path, never extracted from a bundle at runtime. -->
   <ItemGroup>
     <Content Include="native\steam_patcher.exe">
       <Link>steam_patcher.exe</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
     <Content Include="native\pure_patcher.exe">
       <Link>pure_patcher.exe</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
   </ItemGroup>
 
