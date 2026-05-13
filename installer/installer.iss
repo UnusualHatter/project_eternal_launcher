@@ -179,28 +179,57 @@ const
   DotNetDownloadUrl =
     'https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe';
 
-// Check the registry key that the .NET installer populates.
-// Key: HKLM\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\
-//           Microsoft.WindowsDesktop.App
-// Sub-keys are version strings like "8.0.10". We accept any 8.x entry.
+// Detect .NET 8 x64 Desktop Runtime via two independent strategies so the
+// check works regardless of how the user installed .NET:
+//
+//   1. Registry value names  — the .NET installer writes a string value named
+//      after the version (e.g. "8.0.10") under the sharedfx key. Earlier
+//      versions of the check used RegGetSubkeyNames, which is wrong — the
+//      versions are VALUES, not sub-keys.
+//
+//   2. File system fallback  — check for the well-known installation directory
+//      C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\8.*\
+//      This works even when the registry key is absent (e.g. xcopy deploys).
+//
+// Either strategy returning True is sufficient.
 function IsDotNet8DesktopInstalled(): Boolean;
 var
-  KeyPath:     String;
-  SubKeyNames: TArrayOfString;
-  I:           Integer;
+  KeyPath:    String;
+  ValueNames: TArrayOfString;
+  I:          Integer;
+  FindRec:    TFindRec;
+  BaseDir:    String;
 begin
   Result  := False;
+
+  // Strategy 1: registry VALUE names (not sub-keys)
   KeyPath := 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\'
            + 'Microsoft.WindowsDesktop.App';
 
-  if not RegGetSubkeyNames(HKLM, KeyPath, SubKeyNames) then Exit;
+  if RegGetValueNames(HKLM, KeyPath, ValueNames) then
+    for I := 0 to GetArrayLength(ValueNames) - 1 do
+      if (Length(ValueNames[I]) >= 2) and (Copy(ValueNames[I], 1, 2) = '8.') then
+      begin
+        Result := True;
+        Exit;
+      end;
 
-  for I := 0 to GetArrayLength(SubKeyNames) - 1 do
-    if (Length(SubKeyNames[I]) >= 2) and (Copy(SubKeyNames[I], 1, 2) = '8.') then
-    begin
-      Result := True;
-      Exit;
-    end;
+  // Strategy 2: file system — covers xcopy/custom-path installs
+  BaseDir := GetEnv('ProgramFiles')
+           + '\dotnet\shared\Microsoft.WindowsDesktop.App\';
+
+  if FindFirst(BaseDir + '8.*', FindRec) then
+  try
+    repeat
+      if FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    until not FindNext(FindRec);
+  finally
+    FindClose(FindRec);
+  end;
 end;
 
 // ---------------------------------------------------------------------------
